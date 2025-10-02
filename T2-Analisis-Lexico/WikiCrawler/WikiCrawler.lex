@@ -2,50 +2,42 @@
 
 %int
 
-%{
-	String cadena = "";
-%}
+%xstate GALERIA
 
-imagen = class\=\"image\"
-audio1 = class\=\"mwPlayerContainer\ k-player\"
-audio2 = class\=\"unicode\ audiolink\"
-video = class\=\"PopUpMediaTransform\"
+link = (href\=\"https?:[^\"]+\.)
 
 img_ext = (jpg | jpeg | png | svg | gif | JPG | JPEG | PNG | SVG | GIF)
 video_ext = ogv | OGV
-link = href\=\"[^\"\ ]\.
+audio_ext = ogg
+
 destacado = Featured\spictures | Commons\:Valued\simages
+
+//%debug
 
 %%
 
-{imagen} {
-	WikiCrawler.nImg++;
+
+
+
+\<ul\ class=\"gallery\ mw-gallery-traditional\"\>					{
+																			yybegin(GALERIA);
+																	}
+{link}{audio_ext}													{WikiCrawler.nAudio++;}
+
+<GALERIA> {
+	{link}{img_ext}													{
+																		WikiCrawler.nImg++;
+																		WikiCrawler.enlacesImagenes.add(yytext().substring(6, yytext().length()-1));
+																	}
+	{link}{video_ext}												{	
+																		WikiCrawler.nVideo++;
+																		WikiCrawler.enlacesVideo.add(yytext().substring(6, yytext().length()-1));
+																	}
+	class\=\"ui-slider-handle\ ui-state-default						{WikiCrawler.nAudio++;}
+
+
+	\<\/ul\>														{yybegin(YYINITIAL);}
+	[^]																{}
 }
 
-{audio1} | {audio2} {
-	WikiCrawler.nAudio++;
-}
-
-{video} {
-	WikiCrawler.nVideo++;
-}
-
-{link}{img_ext}\" {
-
-	cadena = yytext().substring(6, yytext().length()-1);
-	WikiCrawler.enlacesImagenes.add(cadena);
-}
-
-{link}{video_ext}\" {
-
-	cadena = yytext().substring(6, yytext().length()-1);
-	WikiCrawler.enlacesVideo.add(cadena);
-}
-
-{destacado} {
-	if (!WikiCrawler.enlacesDestacados.contains(cadena)) {
-		WikiCrawler.enlacesDestacados.add(cadena);
-	}
-}
-
-[^]								{}
+[^]																	{}

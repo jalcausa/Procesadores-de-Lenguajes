@@ -92,3 +92,5 @@
 
 														}
 }
+
+// Se puede rehacer para que la operación se haga directamente en las acciones de jflex y ahorrarnos tantas funciones
