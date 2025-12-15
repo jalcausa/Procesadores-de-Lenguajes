@@ -1,0 +1,304 @@
+import java_cup.runtime.*;
+import java.util.*;
+
+
+//Símbolos terminales
+terminal MAS, MENOS, POR, DIV, MENOSUNARIO, IGUAL;
+terminal AP, CP, ALL, CLL, AC, CC, COMA, PYC;
+terminal MAYOR, MENOR, IGUALDAD, NOIGUALDAD, MENOREQ, MAYOREQ, AND, OR, NOT; 
+terminal PRINT, IF, DO, WHILE, ELSE, FOR;
+terminal INT, FLOAT, CHAR, STRING;
+terminal String IDENT, ENTERO, REAL, CADENA, CARACTER;
+
+
+
+//Símbolos no terminales
+non terminal axioma;
+non terminal AST listaSentencias, sentencia;
+non terminal EXPRESION expresion;
+non terminal CONDICION condicion;
+non terminal DECLARVAR declarVariable;
+non terminal DECLARVEC declarVector;
+non terminal TIPO tipo;
+non terminal VECTOR listaElems, expvector;
+
+//Precedencias
+precedence left COMA;
+precedence right IGUAL;
+precedence left OR; 
+precedence left AND;
+precedence left IGUALDAD, NOIGUALDAD, MENOR, MAYOR, MENOREQ, MAYOREQ; 
+precedence left MAS, MENOS;
+precedence left POR, DIV;
+precedence left FLOAT, INT;
+precedence left STRING, CHAR;
+precedence right NOT;
+precedence left MENOSUNARIO;
+precedence nonassoc AP, CP, AC, CC;
+precedence nonassoc IF;
+precedence nonassoc ELSE;
+
+
+
+//Gramática
+
+axioma          ::= listaSentencias:ls                  {: ls.gc(); :}
+                  ;
+
+listaSentencias ::= sentencia:s                         {: RESULT = new AST(null, s); :}
+                  | listaSentencias:ls sentencia:s      {: RESULT = new AST(ls, s); :}
+
+                  ;
+
+sentencia       ::= expresion:e PYC                     {: RESULT = e; :}
+
+                  | declarVariable:d PYC                {: RESULT = d; :}
+
+                  | declarVector:d PYC                  {: RESULT = d; :}
+
+                  | PRINT AP expresion:e CP PYC         {: RESULT = new PRINT(e, null); :}
+
+                  | ALL                                 {: TablaSimbolos.nuevaTabla(); :}
+                    listaSentencias:ls 
+                    CLL                                 {: 
+                                                           TablaSimbolos.cierraTabla();
+                                                           RESULT = ls; 
+                                                        :}
+
+                  | IF AP condicion:c CP sentencia:s    {: RESULT = new IF(c, s); :}
+
+                  | IF AP condicion:c CP sentencia:s1 ELSE sentencia:s2 
+                                                        {: 
+                                                            IF p1 = new IF(c, s1); 
+                                                            RESULT = new IFELSE(p1, s2); 
+                                                        :}
+                  
+                  | WHILE AP condicion:c CP sentencia:s {: RESULT = new WHILE(c,s); :}
+                  
+                  | DO sentencia:s WHILE AP condicion:c CP PYC 
+                                                        {: 
+                                                            RESULT = new DOWHILE(s, c); 
+                                                        :}
+                  
+                  | FOR AP expresion:e1 PYC condicion:c PYC expresion:e2 CP sentencia:s
+                                                        {: 
+                                                            AST sentwhile = new AST(s, e2);
+                                                            WHILE eqFor = new WHILE(c, sentwhile);
+                                                            RESULT = new FOR(e1, eqFor);
+                                                        :}
+                  ;
+
+declarVariable  ::= tipo:t IDENT:id                     
+                                                        {: 
+                                                            if(TablaSimbolos.estaDefinida(id)){
+                                                                Generador.error();
+                                                            } else {
+                                                                // COMENTARIO System.out.println("variable ind "+id+" acaba de declararse");
+                                                                TablaSimbolos.insertar(t, id);
+                                                            }
+                                                            RESULT = new DECLARVAR(t, id);
+                                                        :}
+                  | tipo:t IDENT:id IGUAL expresion:e   
+                                                        {:  
+                                                            ASIG dcha = new ASIG(id, e);
+                                                            if(TablaSimbolos.estaDefinida(id)){
+                                                                Generador.error();
+                                                            }
+                                                            if (t.getTipo()!=e.getTipo()){
+                                                                Generador.error();
+                                                            }
+                                                            TablaSimbolos.insertar(t, id);
+                                                            //COMENTARIO System.out.println("variable ind "+id+" acaba de declararse");
+                                                            RESULT = new DECLARVAR(null, t, id, dcha);
+                                                        :}
+                  | declarVariable:d COMA IDENT:id IGUAL expresion:e
+                                                        {: 
+                                                            ASIG dcha = new ASIG(id, e);
+                                                            if(TablaSimbolos.estaDefinida(id)){
+                                                                Generador.error();
+                                                            }
+                                                            if (d.getTipo().getTipo()!=e.getTipo()){
+                                                                Generador.error();
+                                                            }
+                                                            TablaSimbolos.insertar(d.getTipo(), id);
+                                                            // COMENTARIO System.out.println("variable ind "+id+" acaba de declararse");
+                                                            RESULT = new DECLARVAR(d, d.getTipo(), id, dcha);    
+                                                        :}
+                  | declarVariable:d COMA IDENT:id
+                                                        {: 
+                                                            if(TablaSimbolos.estaDefinida(id)){
+                                                                Generador.error();
+                                                            } else {
+                                                                //COMENTARIO System.out.println("variable lst "+id+" acaba de declararse");
+                                                                TablaSimbolos.insertar(d.getTipo(), id);
+                                                                
+                                                            }
+                                                            RESULT = new DECLARVAR(d, d.getTipo(), id, null);
+                                                        :}
+                  ;
+
+declarVector    ::= tipo:t IDENT:id AC ENTERO:n CC
+                                                        {: 
+                                                            if(TablaSimbolos.estaDefinida(id)){         //Comprobamos si está definida ya la variable 
+                                                                Generador.error();
+                                                            }
+                                                            int tt = TIPO.VECTOR;                       //Establecemos tipo, subtipo y tamanyo del vector
+                                                            int st = t.getTipo();
+                                                            int tam = Integer.valueOf(n);
+                                                            TIPO tipo = new TIPO(tt, st, tam);
+                                                            TablaSimbolos.insertar(tipo, id);           //Lo insertamos en la tabla de simbolos
+                                                            RESULT = new DECLARVEC(tipo, id);           //Guardamos la declaracion correspondiente
+                                                        :}
+                  | tipo:t IDENT:id AC ENTERO:n CC IGUAL expvector:v
+                                                        {: 
+                                                            if(TablaSimbolos.estaDefinida(id)){
+                                                                Generador.error();
+                                                            }
+                                                            int tt = TIPO.VECTOR;
+                                                            int st = t.getTipo();
+                                                            int tam = Integer.valueOf(n);
+                                                            if(st != v.getSubtipo()){
+                                                                Generador.error();
+                                                            }
+                                                            if(tam < v.getTam()){
+                                                                Generador.error();
+                                                            }
+                                                            TIPO tipo = new TIPO(tt,st,tam);
+                                                            TablaSimbolos.insertar(tipo, id);
+                                                            ASIG dcha = new ASIG(id, v);
+                                                            RESULT = new DECLARVEC(null, tipo, id, dcha);
+                                                        :}
+                  | declarVector:d COMA IDENT:id AC ENTERO:n CC
+                                                        {: 
+                                                            if(TablaSimbolos.estaDefinida(id)){
+                                                                Generador.error();
+                                                            }
+                                                            int tt = TIPO.VECTOR;
+                                                            int st = d.getTipo().getTipo();
+                                                            int tam = Integer.valueOf(n);
+                                                            TIPO tipo = new TIPO(tt, st, tam);
+                                                            TablaSimbolos.insertar(tipo, id);
+                                                            RESULT = new DECLARVEC(d, tipo, id, null);
+                                                        :}
+                  | declarVector:d COMA IDENT:id AC ENTERO:n CC IGUAL expvector:v
+                                                        {: 
+                                                            if(TablaSimbolos.estaDefinida(id)){
+                                                                Generador.error();
+                                                            }
+                                                            int tt = TIPO.VECTOR;
+                                                            int st = d.getTipo().getTipo();
+                                                            int tam = Integer.valueOf(n);
+                                                            if(st != v.getSubtipo()){
+                                                                Generador.error();
+                                                            }
+                                                            if(tam < v.getTam()){
+                                                                Generador.error();
+                                                            }
+                                                            TIPO tipo = new TIPO(tt,st,tam);
+                                                            TablaSimbolos.insertar(tipo, id);
+                                                            ASIG dcha = new ASIG(id, v);
+                                                            RESULT = new DECLARVEC(d, tipo, id, dcha);
+                                                        :}
+                  ;
+
+tipo            ::= INT                                 {: RESULT = new TIPO(TIPO.ENTERO); :}
+                  | FLOAT                               {: RESULT = new TIPO(TIPO.REAL); :}
+                  | CHAR                                {: RESULT = new TIPO(TIPO.CARACTER); :}
+                  | STRING                              {: RESULT = new TIPO(TIPO.CADENA); :}
+                  | tipo:t AC CC                        {: RESULT = new TIPO(TIPO.VECTOR, t.getTipo(), 0); :}
+                  ;
+
+expresion       ::= expresion:e1 MAS expresion:e2       {: RESULT = new MAS(e1, e2); :}
+                  | expresion:e1 MENOS expresion:e2     {: RESULT = new MENOS(e1, e2); :}
+                  | expresion:e1 POR expresion:e2       {: RESULT = new POR(e1, e2); :}
+                  | expresion:e1 DIV expresion:e2       {: RESULT = new DIV(e1, e2); :}
+                  | MENOS expresion:e                   {: RESULT = new MENOS(null, e); :} %prec MENOSUNARIO
+                  | AP expresion:e CP                   {: RESULT = e; :}
+                  | ENTERO:n                            {: RESULT = new CTE(n, null, new TIPO(TIPO.ENTERO)); :}
+                  | REAL:r                              {: RESULT = new CTE(r, null, new TIPO(TIPO.REAL)); :}
+                  | CADENA:s                            {: RESULT = new CADENA(s, new TIPO(TIPO.CADENA)); :}
+                  | CARACTER:c                          {: RESULT = new CTE(c, null, new TIPO(TIPO.CARACTER)); :}
+                  | AP tipo:t CP expresion:e            {: RESULT = new CASTING(t, e); :}
+                  | IDENT:id                            {: 
+                                                            TIPO tipo = TablaSimbolos.getTipo(id);
+                                                            //Si no ha sido aun declarada emitimos error
+                                                            if(tipo==null){
+                                                                // COMENTARIO System.out.println("El tipo de la variable "+id+" es nulo");
+                                                                Generador.error();
+                                                            }
+                                                            RESULT = new CTE(id, null, tipo); 
+                                                        :}
+                  | IDENT:id IGUAL expresion:e          {:  
+                                                            TIPO tipo = TablaSimbolos.getTipo(id);
+                                                            //Si no ha sido declarada emitimos error
+                                                            if(tipo == null){
+                                                                // COMENTARIO System.out.println("El tipo de la variable "+id+" es nulo (id = e)");
+                                                                Generador.error();
+                                                            }
+                                                            //Si es declarada pero se le asigna un tipo correcto
+                                                            //emitimos error
+                                                            // COMENTARIO System.out.println("El tipo de la variable "+id+" es "+tipo.getTipo() );
+                                                            // COMENTARIO System.out.println("El tipo de la expresion es "+" "+e.getTipo());
+                                                            //if(tipo.getTipo() != e.getTipo()){ 
+                                                               // Generador.error();
+                                                            //}
+                                                            RESULT = new ASIG(id, e); 
+                                                        :}
+                  | IDENT:id AC expresion:e CC          
+                                                        {:  
+                                                            if(!TablaSimbolos.estaDefinida(id)){
+                                                                Generador.error();
+                                                            }
+                                                            RESULT = new ELEMVECTOR(id, e, null);
+                                                        :}
+                  | IDENT:id AC expresion:e1 CC IGUAL expresion:e2 
+                                                        {: 
+                                                            if(!TablaSimbolos.estaDefinida(id)){        //Comprobamos si está definido el vector
+                                                                Generador.error();                      //En caso negativo lanzamos un error
+                                                            }
+                                                            RESULT = new ELEMVECTOR(id, e1, e2);        //Guardamos el elemento del vector
+                                                        :}
+                  | IDENT:id IGUAL expvector:e          
+                                                        {:
+                                                            if(!TablaSimbolos.estaDefinida(id)){
+                                                                Generador.error();
+                                                            }
+                                                            TIPO tipo = TablaSimbolos.getTipo(id);
+                                                            if(tipo.getTipo()!=e.getTipo()){
+                                                                Generador.error();
+                                                            }
+                                                            RESULT = new ASIG(id, e);
+                                                        :}
+                  |                                     {: 
+                                                           //Se añade para el bucle for con expresiones vacias
+                                                           RESULT = new EXPRESION(null, null); 
+                                                        :}
+                  ;
+
+expvector       ::= ALL listaElems:le CLL               {: RESULT = le; :}
+                  ;
+
+listaElems      ::= listaElems:le COMA expresion:e      
+                                                        {: 
+                                                            le.anyadir(e);
+                                                            RESULT = le;
+                                                        :}      
+                  | expresion:e                         
+                                                        {:
+                                                            RESULT = new VECTOR();
+                                                            RESULT.anyadir(e);
+                                                        :}
+                  ;
+
+
+condicion       ::= expresion:e1 IGUALDAD expresion:e2  {: RESULT = new IGUALDAD(e1,e2); :}
+                  | expresion:e1 NOIGUALDAD expresion:e {: RESULT = new NOIGUALDAD(e1,e); :}
+                  | expresion:e1 MENOR expresion:e2     {: RESULT = new MENOR(e1,e2); :}
+                  | expresion:e1 MENOREQ expresion:e    {: RESULT = new MENOREQ(e1,e); :}
+                  | expresion:e1 MAYOR expresion:e2     {: RESULT = new MAYOR(e1,e2); :}
+                  | expresion:e1 MAYOREQ expresion:e    {: RESULT = new MAYOREQ(e1,e); :}
+                  | NOT condicion:c                     {: RESULT = new NOT(c,null); :}
+                  | condicion:c1 AND condicion:c2       {: RESULT = new AND(c1, c2); :}
+                  | condicion:c1 OR condicion:c2        {: RESULT = new OR(c1,c2); :}
+                  | AP condicion:c CP                   {: RESULT = c; :}
+                  ;

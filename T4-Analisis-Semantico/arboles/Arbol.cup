@@ -1,0 +1,68 @@
+import java_cup.runtime.*;
+import java.util.*;
+
+/* Terminals (tokens returned by the scanner). */
+terminal            ALL, CLL;
+terminal            COMA;
+terminal Integer    NUMERO;
+
+
+/* Non terminals */
+non terminal            axioma;
+non terminal Arbol      arbol;
+
+
+
+/* Precedences */
+
+
+
+/* The grammar */
+axioma ::= arbol:a                                      {: System.out.println(a.toString()); :}
+         ;
+
+arbol ::= ALL arbol:lt COMA NUMERO:n COMA arbol:rt CLL  
+            {:
+                RESULT = new Arbol();
+                RESULT.raiz = n;
+                RESULT.maximo = Math.max(n, Math.max(lt.maximo, rt.maximo));
+                RESULT.profundidad = 1 + Math.max(lt.profundidad, rt.profundidad);
+                RESULT.elementos = 1 + lt.elementos + rt.elementos;
+                                                            
+                RESULT.sumaNivel[0] = n;
+                for (int i=1; i<RESULT.profundidad; i++){
+                    if(i-1 < lt.profundidad && i-1 < rt.profundidad){
+                        RESULT.sumaNivel[i] = lt.sumaNivel[i-1] +rt.sumaNivel[i-1];
+                    } else if(i-1 < rt.profundidad){
+                        RESULT.sumaNivel[i] = rt.sumaNivel[i-1];
+                    } else if(i-1 < lt.profundidad){
+                        RESULT.sumaNivel[i] = lt.sumaNivel[i-1];
+                    } else {
+                        System.out.println("AQUI NO DEBERIA ENTRAR");
+                    }
+                }
+
+                RESULT.arbolInverso = "{"+rt.arbolInverso +", "+n.toString()+", "+lt.arbolInverso+"}";
+                
+                if(lt.profundidad == 1 && rt.profundidad ==1 ){
+                    RESULT.grafo = n.toString()+" -> {"+lt.raiz+", "+rt.raiz+"};";
+                } else if (lt.profundidad==1){
+                    RESULT.grafo = n.toString()+" -> {"+lt.raiz+", "+rt.raiz+"}; "+rt.grafo;
+                } else if (rt.profundidad==1){
+                    RESULT.grafo = lt.grafo+" "+n.toString()+" -> {"+lt.raiz+", "+rt.raiz+"}";
+                } else {
+                    RESULT.grafo = lt.grafo+" "+n.toString()+" -> {"+lt.raiz+", "+rt.raiz+"}; "+rt.grafo;
+                }
+                                                                   
+            :}  
+        | NUMERO:n                                      {: 
+                                                            RESULT = new Arbol();
+                                                            RESULT.raiz = n;
+                                                            RESULT.maximo = n;
+                                                            RESULT.profundidad = 1;
+                                                            RESULT.elementos = 1;
+                                                            RESULT.sumaNivel[0] = n;
+                                                            RESULT.arbolInverso = n.toString();
+                                                            RESULT.grafo = "";
+                                                        :}                                      
+        ;

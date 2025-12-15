@@ -1,0 +1,43 @@
+import java_cup.runtime.*;
+import java.util.ArrayList;
+
+/* Terminales */
+terminal Integer NUMERO;
+
+/* No terminales */
+nonterminal Boolean linea;
+nonterminal ArrayList<Integer> lista;
+
+/* Gramática */
+
+linea	::= lista:l		{: 
+							// Verificar si la lista es una sucesión de Fibonacci
+							boolean esFibonacci = true;
+							
+							// Necesitamos al menos 2 elementos
+							if (l.size() < 2) {
+								esFibonacci = true;
+							} else {
+								// Verificar que cada elemento (desde el tercero) 
+								// sea la suma de los dos anteriores
+								for (int i = 2; i < l.size(); i++) {
+									if (l.get(i-2) + l.get(i-1) != l.get(i)) {
+										esFibonacci = false;
+										break;
+									}
+								}
+							}
+							
+							if (esFibonacci) {
+								Test.out.print("SI");
+							} else {
+								Test.out.print("NO");
+							}
+							
+							RESULT = esFibonacci;
+						:}
+		;
+
+lista	::= lista:l NUMERO:n	{: l.add(n); RESULT = l; :}
+		| NUMERO:n				{: RESULT = new ArrayList<>(); RESULT.add(n); :}
+		;

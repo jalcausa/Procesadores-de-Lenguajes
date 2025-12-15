@@ -1,0 +1,43 @@
+import java_cup.runtime.*;
+import java.util.ArrayList;
+
+/* Terminals (tokens returned by the scanner). */
+
+terminal String  IDENT;
+terminal         INT, LONG, FLOAT, DOUBLE, CHAR, BOOLEAN;
+terminal         COMA;
+terminal         PYC;
+
+
+/* Non terminals */
+
+non terminal                       linea;
+non terminal String                tipo;
+non terminal ArrayList<String>     lista;
+
+
+/* Precedences */
+
+
+/* The grammar */
+linea ::= tipo:s lista:l PYC    {:
+                                    for (String variable : l){
+                                        System.out.println(s+" "+variable+";");
+                                    }
+                                :}
+        ;
+
+lista ::= lista:l COMA IDENT:s  {:  RESULT = l; RESULT.add(s); :}
+        | IDENT:s               {: 
+                                    RESULT = new ArrayList<String>();
+                                    RESULT.add(s);
+                                :}
+        ;
+
+tipo  ::= INT                   {: RESULT = "int"; :}
+        | LONG                  {: RESULT = "long"; :}
+        | FLOAT                 {: RESULT = "float"; :}
+        | DOUBLE                {: RESULT = "double"; :}
+        | CHAR                  {: RESULT = "char"; :}
+        | BOOLEAN               {: RESULT = "boolean"; :}
+        ;

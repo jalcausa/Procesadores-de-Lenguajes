@@ -1,0 +1,5 @@
+a = 6;
+b = 7;
+c = if a < b then a + 5 else b * 2;
+write( c );
+

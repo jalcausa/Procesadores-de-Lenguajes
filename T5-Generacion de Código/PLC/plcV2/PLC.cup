@@ -1,0 +1,48 @@
+import java_cup.runtime.*;
+import java.util.*;
+
+//Símbolos terminales
+terminal MAS, MENOS, POR, DIV, MENOSUNARIO, IGUAL;
+terminal AP, CP, ALL, CLL, PYC;
+terminal MAYOR, MENOR, IGUALDAD, NOIGUALDAD, MENORIGUAL, MAYORIGUAL, AND, OR, NOT; 
+terminal PRINT, IF, DO, WHILE, ELSE, FOR;
+terminal String IDENT, ENTERO;
+
+
+//Símbolos no terminales
+non terminal axioma;
+non terminal AST listaSentencias, sentencia;
+non terminal EXPRESION expresion;
+
+//Precedencias
+precedence left MAS, MENOS;
+precedence left POR, DIV;
+precedence nonassoc MENOSUNARIO;
+
+
+
+//Gramática
+
+axioma          ::= listaSentencias:ls              {: ls.gc(); :}
+                  ;
+
+listaSentencias ::= sentencia:s                     {: RESULT = new AST(null, s); :}
+                  | listaSentencias:ls sentencia:s  {: RESULT = new AST(ls, s); :}
+
+                  ;
+
+sentencia       ::= expresion:e PYC                 {: RESULT = e; :}
+                  | PRINT AP expresion:e CP PYC     {: RESULT = new PRINT(e, null); :}
+                  | ALL listaSentencias:ls CLL      {: RESULT = ls; :}
+                  ;
+
+expresion       ::= expresion:e1 MAS expresion:e2   {: RESULT = new MAS(e1, e2); :}
+                  | expresion:e1 MENOS expresion:e2 {: RESULT = new MENOS(e1, e2); :}
+                  | expresion:e1 POR expresion:e2   {: RESULT = new POR(e1, e2); :}
+                  | expresion:e1 DIV expresion:e2   {: RESULT = new DIV(e1, e2); :}
+                  | MENOS expresion:e               {: RESULT = new MENOS(null, e); :} %prec MENOSUNARIO
+                  | AP expresion:e CP               {: RESULT = e; :}
+                  | IDENT:id IGUAL expresion:e      {: RESULT = new ASIG(id, e); :}
+                  | IDENT:id                        {: RESULT = new CTE(id, null); :}
+                  | ENTERO:n                        {: RESULT = new CTE(n, null); :}
+                  ;

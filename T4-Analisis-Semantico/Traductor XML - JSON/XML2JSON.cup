@@ -1,0 +1,74 @@
+import java_cup.runtime.*;
+import java.util.*;
+
+action code {: 
+                HashMap<String, Boolean> sonListas = new HashMap<String, Boolean>();
+                String nombreLista = "";
+            :}
+
+/* Terminals (tokens returned by the scanner). */
+terminal String OPEN_TAG, CLOSE_TAG;
+terminal String TEXT;
+
+/* Non terminals */
+non terminal                    axioma;
+non terminal String             fichero;
+non terminal String             sent;
+
+/* Precedences */
+
+
+/* The grammar */
+axioma      ::= fichero:f                           {: 
+                                                        System.out.println("\n{");
+                                                        System.out.println(f);
+                                                        System.out.println("}");
+                                                    :}
+              ;
+
+fichero     ::= fichero:f sent:s                    {: RESULT = f+","+"\n"+s; :}
+              | sent:s                              {: RESULT = s; :}
+              ;
+
+sent        ::= OPEN_TAG:k1 TEXT:s CLOSE_TAG:k2     {: 
+                                                        if (sonListas.getOrDefault(k1+"s", false)) {
+                                                            RESULT = s;
+                                                        } else {
+                                                            RESULT = k1+":"+s;
+                                                        }
+                                                    :}
+
+              | OPEN_TAG:k1                         {: 
+                                                        int pos = k1.length()-1;
+                                                        if(k1.charAt(pos) == 's'){
+                                                            nombreLista = k1.substring(0, pos);
+                                                            sonListas.put(k1, true);
+                                                        }
+                                                    :}
+                fichero:f                           {: 
+                                                        if(sonListas.getOrDefault(k1, false)){
+                                                            int pos = k1.length()-1;
+                                                            nombreLista = k1.substring(0,pos);
+                                                            RESULT = nombreLista + ": ["+f+"]";
+                                                        } else {
+                                                            if(sonListas.getOrDefault(k1+"s", false)){
+                                                                RESULT = "{"+f+"}";
+                                                            } else {
+                                                                RESULT = k1+":{"+f+"}";
+                                                            }
+                                                        }
+                                                    :}
+                CLOSE_TAG:k2                        {: sonListas.put(k2, false); :}
+              
+              | OPEN_TAG:k1 CLOSE_TAG:k2            {: 
+                                                        int pos = k1.length()-1;
+                                                        if(k1.charAt(pos) == 's'){
+                                                            nombreLista = k1.substring(0, pos);
+                                                            sonListas.put(k1, true);
+                                                            RESULT = nombreLista + ": []";
+                                                            sonListas.put(k1, false);
+                                                        } else {
+                                                            System.out.println("NO DEBERIA ENTRAR AQUI");
+                                                        }
+                                                    :} 
+              ;

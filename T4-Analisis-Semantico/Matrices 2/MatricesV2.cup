@@ -1,0 +1,134 @@
+import java_cup.runtime.*;
+import java.util.ArrayList;
+
+action code {: 
+                public void error(String s){
+                    System.out.println(s);
+                    System.exit(-1);
+                }
+            :}
+
+parser code {: 
+                TablaSimbolos ts;
+            :}
+
+/* Terminals (tokens returned by the scanner). */
+
+terminal            ALL, CLL, AP, CP, AC, CC;
+terminal            COMA, PYC;
+terminal            ASIG;
+terminal            MAS, MENOS, POR, DIV, MENOSUNARIO;
+terminal            PRINT, CONCATENA;
+terminal            TRANSPUESTA, INVERSA, ADJUNTA;
+terminal double[][] MATRIZ;
+terminal double[]   VECTOR;
+terminal String     IDENT;
+terminal Double     NUMERO;
+
+
+/* Non terminals */
+non terminal                              axioma;
+non terminal                              linea;
+non terminal ArrayList<ArrayList<Double>> listaFilas;
+non terminal ArrayList<Double>            listaNumeros;
+non terminal double[][]                   matriz;
+non terminal double[]                     vector;
+non terminal Double                       escalar;
+
+
+/* Precedences */
+precedence left     MAS, MENOS;
+precedence left     POR, DIV;
+precedence right    CONCATENA;
+precedence nonassoc MENOSUNARIO;
+
+
+/* The grammar */
+
+axioma          ::= axioma linea
+                  | linea
+                  ;
+
+linea           ::= PRINT AP matriz:m CP PYC                {: Matrices.print(m); :}
+                  | PRINT AP vector:v CP PYC                {: Matrices.print(v); :}
+                  | IDENT:s ASIG matriz:m PYC               {: 
+                                                                if(TablaSimbolos.buscar(s)==null){
+                                                                    TablaSimbolos.insertar(s,m);
+                                                                } else {
+                                                                    error(TablaSimbolos.ERROR_DUPLICADA);
+                                                                }
+                                                            :}
+                  | IDENT:s ASIG vector:v PYC               {: 
+                                                                if(TablaSimbolos.buscarVector(s)==null){
+                                                                    TablaSimbolos.insertarVector(s,v);
+                                                                } else {
+                                                                    error(TablaSimbolos.ERROR_DUPLICADA);
+                                                                }
+                                                            :}
+                  ;
+
+matriz          ::= ALL listaFilas:lf CLL                   {: RESULT = Matrices.toArray(lf); :}
+                  | MATRIZ:s                                {: 
+                                                                RESULT = s;
+                                                                if(RESULT == null){
+                                                                    error(TablaSimbolos.ERROR_NOEXISTE);
+                                                                }
+                                                            :}
+                  | vector:v1 POR vector:v2                 {: RESULT = Matrices.producto(v1,v2); :}
+                  | matriz:m CONCATENA escalar:n            {: RESULT = Matrices.concatena(m,n); :}
+                  | matriz:m CONCATENA vector:v             {: 
+                                                                if(Matrices.filas(m)==Matrices.dim(v)){
+                                                                    RESULT = Matrices.concatena(m,v);
+                                                                } else {
+                                                                    error(Matrices.ERROR_FILAS_INSUF);
+                                                                }
+                                                            :}
+
+                  ;
+
+vector          ::= ALL listaNumeros:ln CLL                 {: RESULT = Matrices.toVector(ln); :}
+                  | VECTOR:s                                {: 
+                                                                RESULT = s;
+                                                                if(RESULT == null){
+                                                                    error(TablaSimbolos.ERROR_NOEXISTE);
+                                                                }
+                                                            :}
+                  | vector:v1 CONCATENA escalar:n           {: RESULT = Matrices.concatena(v1,n); :}
+                  | escalar:n CONCATENA vector:v1           {: RESULT = Matrices.concatena(n,v1); :}
+                  | vector:v1 CONCATENA vector:v2           {: RESULT = Matrices.concatena(v1,v2);:}
+                  | vector:v1 MAS vector:v2                 {: RESULT = Matrices.suma(v1,v2); :}
+                  | vector:v1 MAS escalar:n                 {: RESULT = Matrices.suma(n, v1); :}
+                  | escalar:n MAS vector:v1                 {: RESULT = Matrices.suma(n, v1); :}
+                  | vector:v1 POR escalar:n                 {: RESULT = Matrices.producto(n,v1); :}
+                  | escalar:n POR vector:v1                 {: RESULT = Matrices.producto(n,v1); :}
+                  ;
+
+listaFilas      ::= listaFilas:lf COMA vector:v             {: 
+                                                                if(lf.get(0).size()==Matrices.toArrayList(v).size()){
+                                                                    RESULT = lf;
+                                                                    RESULT.add(Matrices.toArrayList(v));
+                                                                } else {
+                                                                    error(Matrices.ERROR_FILAS);
+                                                                }
+                                                            :}
+                  | vector:v                                {: 
+                                                                RESULT = new ArrayList<ArrayList<Double>>();
+                                                                RESULT.add(Matrices.toArrayList(v));
+                                                            :}
+                  ;
+
+listaNumeros    ::= listaNumeros:ln COMA escalar:n           {: RESULT = ln; RESULT.add(n); :}
+                  | escalar:n                                {: 
+                                                                RESULT = new ArrayList<Double>();
+                                                                RESULT.add(n);
+                                                            :}
+                  |                                         {: RESULT = new ArrayList<Double>(); :}
+                  ;
+
+escalar           ::= MENOS NUMERO:n                          {: RESULT = -n; :} %prec MENOSUNARIO
+                  | NUMERO:n                                  {: RESULT = n; :}
+                  | escalar:v1 MAS escalar:v2                 {: RESULT = v1+v2; :}
+                  | escalar:v1 MENOS escalar:v2               {: RESULT = v1-v2; :}
+                  | escalar:v1 POR escalar:v2                 {: RESULT = v1*v2; :}
+                  | escalar:v1 DIV escalar:v2                 {: RESULT = v1/v2; :}
+                  ;

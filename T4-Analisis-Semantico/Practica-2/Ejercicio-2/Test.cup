@@ -1,0 +1,43 @@
+import java_cup.runtime.*;
+import java.util.ArrayList;
+
+/* Terminals (tokens returned by the scanner). */
+terminal        INT, DOUBLE;
+terminal String IDENT;
+terminal        COMA, DP, PYC;
+
+
+/* Non terminals */
+
+non terminal ArrayList<String>  lista;
+non terminal String             declaracion;
+non terminal String             tipo;
+
+/* Precedences */
+
+
+/* The grammar */
+
+declaracion ::= lista:l DP tipo:s PYC       {: 
+                                                RESULT = s+" ";
+                                                if(l.size()>0){
+                                                    RESULT +=l.get(0);
+                                                }
+                                                for (int i = 1; i<l.size();i++){
+                                                    if(l.get(i)!=null){
+                                                        RESULT += (", "+l.get(i));
+                                                    }
+                                                }
+                                                RESULT += ";";
+                                                System.out.println(RESULT);
+                                            :}
+              ;
+lista       ::= lista:l COMA IDENT:s        {: RESULT = l; RESULT.add(s); :}
+              | IDENT:s                     {: RESULT = new ArrayList<String>(); RESULT.add(s); :}                       
+              ;
+tipo        ::= INT                         {: RESULT = "int"; :}
+              | DOUBLE                      {: RESULT = "double"; :}
+              ;
+
+
+

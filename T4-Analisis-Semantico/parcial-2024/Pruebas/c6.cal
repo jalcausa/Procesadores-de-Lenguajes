@@ -1,0 +1,4 @@
+a=45;
+b=678;
+print("Ejemplo 1, a=", a, ", b =", b);
+

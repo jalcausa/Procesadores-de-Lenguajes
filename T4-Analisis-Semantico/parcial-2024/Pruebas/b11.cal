@@ -1,0 +1,5 @@
+a = 6;
+b = 7;
+d = if a < 7 then if b < 8 then 5 else 6 else 7;
+write( d );
+

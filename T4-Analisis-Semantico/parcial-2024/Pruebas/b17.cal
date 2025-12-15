@@ -1,0 +1,4 @@
+a = 6;
+d = 3 + (if a < 8 then 76 else 77) * 2;
+write( d );
+

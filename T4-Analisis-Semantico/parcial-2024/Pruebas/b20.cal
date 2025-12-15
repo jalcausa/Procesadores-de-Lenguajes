@@ -1,0 +1,4 @@
+a = 6;
+d = if a > 7 then 3 else a * 2;
+write( d );
+

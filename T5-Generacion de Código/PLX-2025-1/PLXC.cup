@@ -1,0 +1,119 @@
+import java_cup.runtime.*;
+import java.util.*;
+
+terminal MAS, MENOS, POR, DIV, MENOSUNARIO, IGUAL;
+terminal SHIFTIZQ, SHIFTDER;
+terminal AP, CP, ALL, CLL, PYC, COMA;
+terminal MAYOR, MENOR, IGUALDAD, NOIGUALDAD, MENOREQ, MAYOREQ, AND, OR, NOT; 
+terminal PRINT, INT, IF, DO, WHILE, ELSE, FOR;
+terminal REPEAT, TIMES;
+terminal SELECT, FIRST, LAST, FROM, TO, STEP, DEFAULT, WHERE;
+terminal String IDENT, ENTERO;
+
+non terminal axioma;
+non terminal AST listaSentencias, sentencia, declaracion, listaIdent;
+non terminal EXPRESION expresion, expShift;
+non terminal CONDICION condicion;
+non terminal String opcion;
+non terminal EXPRESION stepVal, defaultVal;
+non terminal AST cuerpoSelect;
+
+precedence right IGUAL;
+precedence left OR; 
+precedence left AND;
+precedence left IGUALDAD, NOIGUALDAD, MENOR, MAYOR, MENOREQ, MAYOREQ;
+precedence left SHIFTIZQ, SHIFTDER;
+precedence left MAS, MENOS;
+precedence left POR, DIV;
+precedence right NOT;
+precedence left MENOSUNARIO;
+precedence nonassoc IF;
+precedence nonassoc ELSE;
+
+axioma          ::= listaSentencias:ls                  {: ls.gc(); :}
+                  ;
+
+listaSentencias ::= sentencia:s                         {: RESULT = new AST(null, s); :}
+                  | listaSentencias:ls sentencia:s      {: RESULT = new AST(ls, s); :}
+                  ;
+
+sentencia       ::= expresion:e PYC                     {: RESULT = e; :}
+                  | declaracion:d                       {: RESULT = d; :}
+                  | PRINT AP expresion:e CP PYC         {: RESULT = new PRINT(e, null); :}
+                  | ALL listaSentencias:ls CLL          {: RESULT = ls; :}
+                  | IF AP condicion:c CP sentencia:s    
+                                                        {: 
+                                                            IF aux = new IF(c, s); 
+                                                            RESULT = new IFELSE(aux, null); 
+                                                        :}
+                  | IF AP condicion:c CP sentencia:s1 ELSE sentencia:s2 
+                                                        {: 
+                                                            IF p1 = new IF(c, s1); 
+                                                            RESULT = new IFELSE(p1, s2); 
+                                                        :}
+                  | WHILE AP condicion:c CP sentencia:s {: RESULT = new WHILE(c,s); :}
+                  | DO sentencia:s WHILE AP condicion:c CP PYC {: RESULT = new DOWHILE(s, c); :}
+                  | FOR AP expresion:e1 PYC condicion:c PYC expresion:e2 CP sentencia:s
+                                                        {: 
+                                                            AST sentwhile = new AST(s, e2);
+                                                            WHILE eqFor = new WHILE(c, sentwhile);
+                                                            RESULT = new FOR(e1, eqFor);
+                                                        :}
+                  | REPEAT sentencia:s expresion:e TIMES PYC
+                                                        {: RESULT = new REPEATTIMES(s, e); :}
+                  | SELECT opcion:op IDENT:id FROM expresion:desde TO expresion:hasta stepVal:paso defaultVal:defecto cuerpoSelect:cuerpo
+                                                        {: RESULT = new SELECT(id, op, desde, hasta, paso, defecto, cuerpo); :}
+                  ;
+
+opcion          ::= FIRST                               {: RESULT = "first"; :}
+                  | LAST                                {: RESULT = "last"; :}
+                  |                                     {: RESULT = "first"; :}
+                  ;
+
+stepVal         ::= STEP expresion:e                    {: RESULT = e; :}
+                  |                                     {: RESULT = new CTE("1", null); :}
+                  ;
+
+defaultVal      ::= DEFAULT expresion:e                 {: RESULT = e; :}
+                  |                                     {: RESULT = new CTE("0", null); :}
+                  ;
+
+cuerpoSelect    ::= WHERE AP condicion:c CP PYC         {: RESULT = new SELECTWHERE(c); :}
+                  | SELECT opcion:op IDENT:id FROM expresion:desde TO expresion:hasta stepVal:paso defaultVal:defecto cuerpoSelect:cuerpo
+                                                        {: RESULT = new SELECT(id, op, desde, hasta, paso, defecto, cuerpo); :}
+                  ;
+
+declaracion     ::= INT listaIdent:l PYC                {: RESULT = l; :}
+                  ;
+
+listaIdent      ::= IDENT:id                            {: RESULT = new DECLARACION(id); :}
+                  | listaIdent:l COMA IDENT:id          {: RESULT = new AST(l, new DECLARACION(id)); :}
+                  ;
+
+expresion       ::= expShift:e                          {: RESULT = e; :}
+                  | IDENT:id IGUAL expresion:e          {: RESULT = new ASIG(id, e); :}
+                  ;
+
+expShift        ::= expShift:e1 SHIFTIZQ expShift:e2    {: RESULT = new SHIFTL(e1, e2); :}
+                  | expShift:e1 SHIFTDER expShift:e2    {: RESULT = new SHIFTR(e1, e2); :}
+                  | expShift:e1 MAS expShift:e2         {: RESULT = new MAS(e1, e2); :}
+                  | expShift:e1 MENOS expShift:e2       {: RESULT = new MENOS(e1, e2); :}
+                  | expShift:e1 POR expShift:e2         {: RESULT = new POR(e1, e2); :}
+                  | expShift:e1 DIV expShift:e2         {: RESULT = new DIV(e1, e2); :}
+                  | MENOS expShift:e                    {: RESULT = new MENOS(null, e); :} %prec MENOSUNARIO
+                  | AP expresion:e CP                   {: RESULT = e; :}
+                  | IDENT:id                            {: RESULT = new CTE(id, null); :}
+                  | ENTERO:n                            {: RESULT = new CTE(n, null); :}
+                  ;
+
+condicion       ::= expresion:e1 IGUALDAD expresion:e2  {: RESULT = new IGUALDAD(e1,e2); :}
+                  | expresion:e1 NOIGUALDAD expresion:e {: RESULT = new NOIGUALDAD(e1,e); :}
+                  | expresion:e1 MENOR expresion:e2     {: RESULT = new MENOR(e1,e2); :}
+                  | expresion:e1 MENOREQ expresion:e    {: RESULT = new MENOREQ(e1,e); :}
+                  | expresion:e1 MAYOR expresion:e2     {: RESULT = new MAYOR(e1,e2); :}
+                  | expresion:e1 MAYOREQ expresion:e    {: RESULT = new MAYOREQ(e1,e); :}
+                  | NOT condicion:c                     {: RESULT = new NOT(c,null); :}
+                  | condicion:c1 AND condicion:c2       {: RESULT = new AND(c1, c2); :}
+                  | condicion:c1 OR condicion:c2        {: RESULT = new OR(c1,c2); :}
+                  | AP condicion:c CP                   {: RESULT = c; :}
+                  ;

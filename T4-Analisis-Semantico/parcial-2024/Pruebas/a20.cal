@@ -1,0 +1,8 @@
+a = 5;
+b = a + 4;
+c = b + 3;
+c = a * (-c + a) * b;
+write( a * b );
+write( b * c );
+write( c + (a * b) );
+

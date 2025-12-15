@@ -1,0 +1,58 @@
+import java_cup.runtime.*;
+import java.util.ArrayList;
+
+/* Terminals (tokens returned by the scanner). */
+
+terminal String  SUMA, RESTA, MULTIPLICA, DIVIDE;
+terminal         AP, CP;
+terminal         COMA;
+terminal         PYC;
+terminal Integer NUMERO;
+
+
+/* Non terminals */
+
+non terminal                    axioma;
+non terminal Integer            elem;
+non terminal Integer            exp;
+non terminal String             funcion;
+non terminal ArrayList<Integer> lista;
+
+
+/* Precedences */
+
+precedence right SUMA, RESTA, MULTIPLICA, DIVIDE;
+
+/* The grammar */
+axioma      ::= elem:v PYC                                  {: System.out.println(v); :} 
+              ;
+
+elem        ::= exp:v                                       {: RESULT = v; :}
+              | NUMERO:v                                    {: RESULT = v; :}
+              ;
+
+exp         ::= RESTA AP elem:v1 COMA elem:v2 CP            {: RESULT = v1-v2; :}
+              | DIVIDE AP elem:v1 COMA elem:v2 CP           {: RESULT = v1/v2; :}
+              | SUMA AP lista:l CP                          {: 
+                                                                RESULT = 0;
+                                                                for (Integer i : l){
+                                                                    RESULT += i;
+                                                                }
+                                                            :}
+              | MULTIPLICA AP lista:l CP                    {: 
+                                                                RESULT = 1;
+                                                                for (Integer i : l){
+                                                                    RESULT *= i;
+                                                                }
+                                                            :}
+              ;
+
+lista       ::= lista:l COMA elem:v                         {: l.add(v); RESULT = l; :}
+              | elem:v                                      {: 
+                                                                RESULT = new ArrayList<Integer>();
+                                                                RESULT.add(v);
+                                                            :}
+              ;
+
+
+

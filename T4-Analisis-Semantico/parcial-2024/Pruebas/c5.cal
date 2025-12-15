@@ -1,0 +1,2 @@
+print("Ejemplo 1", 456, 345, "Ejemplo 2", 4566);
+

@@ -1,0 +1,4 @@
+b = 6;
+a = if 3 + 4 < b then 74 else 81;
+write( a );
+

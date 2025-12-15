@@ -1,0 +1,6 @@
+a = 6;
+b = 7;
+c = 34;
+d = if (a > 7 or not c < 30) and not c > 40 then a else b;
+write( d );
+

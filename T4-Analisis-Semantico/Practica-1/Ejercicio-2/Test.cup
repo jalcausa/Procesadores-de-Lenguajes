@@ -1,0 +1,35 @@
+import java_cup.runtime.*;
+import java.util.ArrayList;
+
+ /* Terminales */
+
+terminal String IDENT, INT, DOUBLE, PYC;
+
+ /* No Terminales */
+
+nonterminal String linea;
+nonterminal ArrayList<String> lista;
+
+ /* Gramática */
+
+linea	::=	INT lista:l PYC 	{: 
+						
+								RESULT = "";
+								for (String s : l) {
+									RESULT += s + ":int; ";
+								}
+								System.out.print(RESULT);
+							:}
+		| DOUBLE lista:l PYC {: 
+						
+								RESULT = "";
+								for (String s : l) {
+									RESULT += s + ":double; ";
+								}
+								System.out.print(RESULT);
+							:}
+		;
+
+lista	::= lista:l IDENT:s {: l.add(s); RESULT = l; :}
+		| IDENT:s {: RESULT = new ArrayList<>(); RESULT.add(s); :}
+		;

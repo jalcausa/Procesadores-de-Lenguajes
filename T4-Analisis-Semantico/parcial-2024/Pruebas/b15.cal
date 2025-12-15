@@ -1,0 +1,5 @@
+a = 6;
+b = 7;
+d = if a < 3 then 76 else if b < 2 then 75 else 77;
+write( d );
+

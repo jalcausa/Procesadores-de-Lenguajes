@@ -1,0 +1,101 @@
+import java_cup.runtime.*;
+import java.util.ArrayList;
+
+/* Terminals (tokens returned by the scanner). */
+
+terminal Integer NUMERO;
+terminal         ASIG, MAS, MENOS, ELEV;
+terminal         X;
+terminal         PYC;
+terminal         MENOSUNARIO;
+terminal         MASUNARIO;
+
+
+/* Non terminals */
+
+non terminal Integer            linea;
+non terminal Integer            eval;
+non terminal ArrayList<Integer> pol;
+non terminal ArrayList<Integer> mono;
+non terminal Integer            coef;
+non terminal ArrayList<Integer> cola;
+
+
+/* Precedences */
+precedence right    ELEV;
+precedence left     MAS, MENOS;
+precedence nonassoc MENOSUNARIO, MASUNARIO;
+
+
+
+/* The grammar */
+
+linea     ::= eval:x PYC pol:p PYC      {: 
+                                            RESULT = 0;
+                                            for (int i = 0; i<p.size(); i=i+2){
+                                                Integer c = p.get(i);
+                                                Integer e = p.get(i+1);
+                                                RESULT += c*((int) Math.pow(x,e));
+                                            } 
+                                            System.out.println(RESULT);
+                                        :}
+            ;
+
+eval      ::= X ASIG coef:n         {: RESULT = n; :}    
+            ;
+
+pol       ::= mono:m cola:c         {: 
+                                        m.addAll(c);
+                                        RESULT = m;
+                                    :}
+            | mono:m                {: RESULT = m; :}
+            ;
+
+mono      ::= X                     {: 
+                                        RESULT = new ArrayList<Integer>();
+                                        RESULT.add(1);
+                                        RESULT.add(1);
+                                    :}
+            | coef:c                {:
+                                        RESULT = new ArrayList<Integer>();
+                                        RESULT.add(c);
+                                        RESULT.add(0);
+                                    :}
+            | coef:c X              {: 
+                                        RESULT = new ArrayList<Integer>();
+                                        RESULT.add(c);
+                                        RESULT.add(1);
+                                    :}
+            | X ELEV coef:e         {: 
+                                        RESULT = new ArrayList<Integer>();
+                                        RESULT.add(1);
+                                        RESULT.add(e);
+                                    :}
+            | coef:c X ELEV coef:e  {: 
+                                        RESULT = new ArrayList<Integer>();
+                                        RESULT.add(c);
+                                        RESULT.add(e);
+                                    :}
+            ;
+
+cola      ::= MAS mono:m            {: RESULT = m; :}            
+            | MENOS mono:m          {: 
+                                        int c = -(m.get(0));
+                                        m.set(0,c);
+                                    :}
+            | MAS mono:m cola:c     {: 
+                                        m.addAll(c);
+                                        RESULT = m;
+                                    :}
+            | MENOS mono:m cola:c   {: 
+                                        int v = -(m.get(0));
+                                        m.set(0,v);
+                                        m.addAll(c);
+                                        RESULT = m;
+                                    :}
+            ;
+
+coef      ::= NUMERO:n              {: RESULT = n; :}
+            | MAS NUMERO:n          {: RESULT = n; :}   %prec MASUNARIO
+            | MENOS NUMERO:n        {: RESULT = -n; :}  %prec MENOSUNARIO
+            ;

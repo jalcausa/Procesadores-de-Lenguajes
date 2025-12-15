@@ -1,0 +1,145 @@
+import java_cup.runtime.*;
+import java.util.ArrayList;
+
+terminal MAS, MENOS, POR, DIV;
+terminal AP, CP, AC, CC, ALL, CLL;
+terminal COMA, PYC, ASIG;
+terminal INVERSA, TRANSPUESTA, ADJUNTA, PRINT;
+terminal String IDENT;
+terminal Double NUMERO;
+
+non terminal programa;
+non terminal sentencia;
+non terminal double[][] expr;
+non terminal ArrayList<ArrayList<Double>> matriz;
+non terminal ArrayList<ArrayList<Double>> filasNormal;
+non terminal ArrayList<ArrayList<Double>> filasJava;
+non terminal ArrayList<Double> fila;
+non terminal ArrayList<Double> filaJava;
+
+precedence left MAS, MENOS;
+precedence left POR, DIV;
+
+programa ::= programa sentencia
+           | sentencia
+           ;
+
+sentencia ::= PRINT AP expr:e CP PYC
+              {: Matrices.print(e); :}
+            | IDENT:id ASIG expr:e PYC
+              {: TablaSimbolos.insertar(id, e); :}
+            ;
+
+expr ::= expr:e1 MAS expr:e2
+         {:
+            if (Matrices.filas(e1) != Matrices.filas(e2) || Matrices.columnas(e1) != Matrices.columnas(e2)) {
+                System.out.println(Matrices.ERROR_SUMA);
+                System.exit(1);
+            }
+            RESULT = Matrices.suma(e1, e2);
+         :}
+       | expr:e1 MENOS expr:e2
+         {:
+            if (Matrices.filas(e1) != Matrices.filas(e2) || Matrices.columnas(e1) != Matrices.columnas(e2)) {
+                System.out.println(Matrices.ERROR_SUMA);
+                System.exit(1);
+            }
+            RESULT = Matrices.suma(Matrices.producto(-1, e2), e1);
+         :}
+       | expr:e1 POR expr:e2
+         {:
+            if (Matrices.columnas(e1) != Matrices.filas(e2)) {
+                System.out.println(Matrices.ERROR_PROD);
+                System.exit(1);
+            }
+            RESULT = Matrices.producto(e1, e2);
+         :}
+       | INVERSA AP expr:e CP
+         {:
+            if (Matrices.filas(e) != Matrices.columnas(e)) {
+                System.out.println(Matrices.ERROR_INVERSA);
+                System.exit(1);
+            }
+            RESULT = Matrices.inversa(e);
+         :}
+       | TRANSPUESTA AP expr:e CP
+         {: RESULT = Matrices.transpuesta(e); :}
+       | ADJUNTA AP expr:e CP
+         {:
+            if (Matrices.filas(e) != Matrices.columnas(e)) {
+                System.out.println(Matrices.ERROR_ADJUNTA);
+                System.exit(1);
+            }
+            RESULT = Matrices.adjunta(e);
+         :}
+       | AP expr:e CP
+         {: RESULT = e; :}
+       | IDENT:id
+         {:
+            double[][] m = TablaSimbolos.buscar(id);
+            if (m == null) {
+                System.out.println(TablaSimbolos.ERROR_NOEXISTE);
+                System.exit(1);
+            }
+            RESULT = m;
+         :}
+       | matriz:m
+         {: RESULT = Matrices.toArray(m); :}
+       ;
+
+matriz ::= AC filasNormal:f CC
+           {: RESULT = f; :}
+         | ALL filasJava:f CLL
+           {: RESULT = f; :}
+         ;
+
+filasNormal ::= filasNormal:fs PYC fila:f
+          {:
+             if (fs.get(0).size() != f.size()) {
+                 System.out.println(Matrices.ERROR_FILAS);
+                 System.exit(1);
+             }
+             fs.add(f);
+             RESULT = fs;
+          :}
+        | fila:f
+          {:
+             ArrayList<ArrayList<Double>> lista = new ArrayList<ArrayList<Double>>();
+             lista.add(f);
+             RESULT = lista;
+          :}
+        ;
+
+filasJava ::= filasJava:fs COMA filaJava:f
+          {:
+             if (fs.get(0).size() != f.size()) {
+                 System.out.println(Matrices.ERROR_FILAS);
+                 System.exit(1);
+             }
+             fs.add(f);
+             RESULT = fs;
+          :}
+        | filaJava:f
+          {:
+             ArrayList<ArrayList<Double>> lista = new ArrayList<ArrayList<Double>>();
+             lista.add(f);
+             RESULT = lista;
+          :}
+        ;
+
+filaJava ::= ALL fila:f CLL
+         {: RESULT = f; :}
+       ;
+
+fila ::= fila:f COMA NUMERO:n
+         {:
+            f.add(n);
+            RESULT = f;
+         :}
+       | NUMERO:n
+         {:
+            ArrayList<Double> lista = new ArrayList<Double>();
+            lista.add(n);
+            RESULT = lista;
+         :}
+       ;

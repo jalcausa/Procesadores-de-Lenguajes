@@ -1,0 +1,29 @@
+import java_cup.runtime.*;
+
+/* Terminals (tokens returned by the scanner). */
+
+terminal Integer NUMERO;
+terminal         AC, CC, COMA;
+
+
+/* Non terminals */
+
+non terminal axioma;
+non terminal Integer lista;
+non terminal Integer elem;
+
+
+/* Precedences */
+
+
+/* The grammar */
+
+axioma ::= AC lista:l CC            {: System.out.println(l); :}
+         ;
+lista  ::= lista:l COMA elem:val    {: RESULT = l+val; :}
+         | elem:val                 {: RESULT = val; :}
+         |                          {: RESULT = 0; :}
+         ;
+elem   ::= AC lista:l CC            {: RESULT = 2*l; :}
+         | NUMERO:n                 {: RESULT = n; :}
+         ;

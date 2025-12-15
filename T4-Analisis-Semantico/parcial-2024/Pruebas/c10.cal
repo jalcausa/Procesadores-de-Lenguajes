@@ -1,0 +1,4 @@
+a=84;
+b=23;
+print("Ejemplo 1, a=", if a > 10 then a else b, ", b =", if a < 100 then a else b);
+

@@ -1,0 +1,4 @@
+a = 6;
+d = if if a > 7 then 40 else 60 > 50 then 80 else 90;
+write( d );
+

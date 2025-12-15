@@ -1,0 +1,84 @@
+import java_cup.runtime.*;
+import java.util.*;
+
+parser code {: 
+                HashMap<String, String> ts = new HashMap<String, String>();
+            :}
+
+action code {:  
+                String E_VND = "ERROR: variable no definida";
+                String E_IN = "ERROR: índice de posición debe ser positivo";
+                String E_INV = "ERROR: índice no válido, excede la longitud del string";
+                String E_LNV = "ERROR: la longitud debe ser positiva";
+                public void error(String str){
+                    System.out.println(str);
+                    System.exit(0);
+                }
+            :}
+
+/* Terminals (tokens returned by the scanner). */
+terminal                MAS, MENOS, MENOSUNARIO;
+terminal                IGUAL;
+terminal                AP, CP, COMA, PUNTO, PYC;
+terminal                PRINT, SUBSTR, SIZE;
+terminal String         CADENA;
+terminal String         ID;
+terminal Integer        NUMERO;
+
+
+/* Non terminals */
+non terminal            sentencia, axioma;
+non terminal String     string;
+non terminal Integer    escalar;
+
+
+/* Precedences */
+precedence left        MAS, MENOS;
+precedence right        PUNTO;
+precedence nonassoc     MENOSUNARIO;
+
+
+
+/* The grammar */
+
+axioma          ::= axioma sentencia
+                  | sentencia
+                  ;
+
+sentencia       ::= ID:id IGUAL string:s PYC                                {: ts.put(id, s);:}
+                  | PRINT AP string:s CP PYC                                {: System.out.println(s); :} 
+                  ;
+
+string          ::= CADENA:cad                                              {: RESULT = cad; :}
+                  | ID:id                                                   {: 
+                                                                                if(ts.containsKey(id)){
+                                                                                    RESULT = ts.get(id);
+                                                                                } else {
+                                                                                    error(E_VND);
+                                                                                }
+                                                                            :}
+                  | string:s1 MAS string:s2                                 {: RESULT = s1 + s2; :}
+                  | string:s PUNTO SUBSTR AP escalar:n1 COMA escalar:n2 CP  {: 
+                                                                                boolean b1 = n1<0;
+                                                                                boolean b2 = n1>s.length();
+                                                                                boolean b3 = n2<0;
+                                                                                if(b1){
+                                                                                    error(E_IN);
+                                                                                }
+                                                                                if(b2){
+                                                                                    error(E_INV);
+                                                                                }
+                                                                                if(b3){
+                                                                                    error(E_LNV);
+                                                                                }
+                                                                                RESULT = s.substring(n1, (n1 + n2));
+                                                                            :}
+                  | AP string:s CP                                              {: RESULT = s; :}
+                  ;
+
+escalar         ::= escalar:n1 MAS escalar:n2                                   {: RESULT = n1+n2; :}
+                  | escalar:n1 MENOS escalar:n2                                 {: RESULT = n1-n2; :}
+                  | MENOS escalar:n                                             {: RESULT = -n; :} %prec MENOSUNARIO
+                  | NUMERO:n                                                    {: RESULT = n; :}
+                  | string:s PUNTO SIZE AP CP                                   {: RESULT = s.length(); :}
+                  ;

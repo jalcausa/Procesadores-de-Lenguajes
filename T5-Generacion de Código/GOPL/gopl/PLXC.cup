@@ -1,0 +1,232 @@
+import java_cup.runtime.*;
+import java.util.*;
+
+parser code {:
+    @Override
+    public void syntax_error(Symbol cur_token) {
+        System.err.println("Se ha detectado un error de sintaxis en: " + cur_token.value);
+        Generador.error(Generador.E_SYNTAX);
+    }
+:}
+
+
+
+//Símbolos terminales
+terminal PAQUETE, IMPORTA, FUNCION, FMAIN;
+terminal MAS, MENOS, POR, DIV, MENOSUNARIO, IGUAL;
+terminal ACOMBLOQUE, CCOMBLOQUE, AP, CP, ALL, CLL, AC, CC, COMA, PYC;
+terminal MAYOR, MENOR, IGUALDAD, NOIGUALDAD, MENOREQ, MAYOREQ, AND, OR, NOT; 
+terminal PRINT, IF, DO, WHILE, ELSE, FOR;
+terminal INT, BOOL, FLOAT, CHAR, STRING;
+terminal String COMENTARIO, IDENT, ENTERO, REAL, CADENA, CARACTER;
+
+
+
+//Símbolos no terminales
+non terminal axioma;
+non terminal AST listaSentencias, sentencia;
+non terminal ArrayList<AST> listExp;
+non terminal EXPRESION expresion;
+non terminal DECLARVAR declarVariable;
+non terminal TIPO tipo;
+
+//Precedencias
+precedence left COMA;
+precedence right IGUAL;
+precedence left OR; 
+precedence left AND;
+precedence left IGUALDAD, NOIGUALDAD, MENOR, MAYOR, MENOREQ, MAYOREQ; 
+precedence left MAS, MENOS;
+precedence left POR, DIV;
+precedence left FLOAT, INT;
+precedence left STRING, CHAR;
+precedence right NOT;
+precedence left MENOSUNARIO;
+precedence nonassoc AP, CP, AC, CC;
+precedence nonassoc IF;
+precedence nonassoc ELSE;
+
+
+
+//Gramática
+
+axioma          ::= listaSentencias:ls                  {: ls.gc(); :}
+                  ;
+
+listaSentencias ::= sentencia:s                         {: RESULT = new AST(null, s); :}
+                  | sentencia:s PYC                     {: RESULT = new AST(null, s); :}
+                  | listaSentencias:ls sentencia:s      {: RESULT = new AST(ls, s); :}
+                  | listaSentencias:ls sentencia:s PYC  {: RESULT = new AST(ls, s); :}
+                  ;
+
+sentencia       ::= expresion:e                         {: RESULT = e; :}
+
+                  | PAQUETE IDENT:s                     
+                                                        {: 
+                                                            if(!s.equals("main")){
+                                                                Generador.error(Generador.E_PACKAGE);
+                                                            }
+                                                        :}
+
+                  | IMPORTA CADENA:s                     
+                                                        {:
+                                                            if(!s.equals("fmt")) {
+                                                                Generador.error(Generador.E_IMPORT);
+                                                            }
+                  
+                                                        :}
+
+                  | FUNCION FMAIN AP CP ALL             {: TablaSimbolos.nuevaTabla(); :}
+                    listaSentencias:ls CLL              {: 
+                                                            TablaSimbolos.cierraTabla(); 
+                                                            RESULT = ls;
+                                                        :}
+
+                  | COMENTARIO:s                        {: RESULT = new COMENTARIO(s); :}
+
+                  | declarVariable:d                    {: RESULT = d; :}
+
+                  | PRINT AP listExp:le CP              {: RESULT = new PRINTLIST(le); :}
+
+                  | ALL                                 {: TablaSimbolos.nuevaTabla(); :}
+                    listaSentencias:ls 
+                    CLL                                 {: 
+                                                           TablaSimbolos.cierraTabla();
+                                                           RESULT = ls; 
+                                                        :}
+
+                  | IF AP expresion:c CP sentencia:s    {: RESULT = new IF(c, s); :}
+
+                  | IF AP expresion:c CP sentencia:s1 ELSE sentencia:s2 
+                                                        {: 
+                                                            IF p1 = new IF(c, s1); 
+                                                            RESULT = new IFELSE(p1, s2); 
+                                                        :}
+                  
+                  | WHILE AP expresion:c CP sentencia:s {: RESULT = new WHILE(c,s); :}
+                  
+                  | DO sentencia:s WHILE AP expresion:c CP 
+                                                        {: 
+                                                            RESULT = new DOWHILE(s, c); 
+                                                        :}
+                  
+                  | FOR AP expresion:e1 PYC expresion:c PYC expresion:e2 CP sentencia:s
+                                                        {: 
+                                                            AST sentwhile = new AST(s, e2);
+                                                            WHILE eqFor = new WHILE(c, sentwhile);
+                                                            RESULT = new FOR(e1, eqFor);
+                                                        :}
+                  ;
+
+declarVariable  ::= tipo:t IDENT:id                     
+                                                        {: 
+                                                            if(TablaSimbolos.estaDefinida(id)){
+                                                                Generador.error();
+                                                            } else {
+                                                                // COMENTARIO System.out.println("variable ind "+id+" acaba de declararse");
+                                                                TablaSimbolos.insertar(t, id);
+                                                            }
+                                                            RESULT = new DECLARVAR(t, id);
+                                                        :}
+                  | tipo:t IDENT:id IGUAL expresion:e   
+                                                        {:  
+                                                            ASIG dcha = new ASIG(id, e);
+                                                            if(TablaSimbolos.estaDefinida(id)){
+                                                                Generador.error();
+                                                            }
+                                                            if (t.getTipo()!=e.getTipo()){
+                                                                Generador.error();
+                                                            }
+                                                            TablaSimbolos.insertar(t, id);
+                                                            // COMENTARIO System.out.println("variable ind "+id+" acaba de declararse");
+                                                            RESULT = new DECLARVAR(null, t, id, dcha);
+                                                        :}
+                  | declarVariable:d COMA IDENT:id IGUAL expresion:e
+                                                        {: 
+                                                            ASIG dcha = new ASIG(id, e);
+                                                            if(TablaSimbolos.estaDefinida(id)){
+                                                                Generador.error();
+                                                            }
+                                                            if (d.getTipo().getTipo()!=e.getTipo()){
+                                                                Generador.error();
+                                                            }
+                                                            TablaSimbolos.insertar(d.getTipo(), id);
+                                                            // COMENTARIO System.out.println("variable ind "+id+" acaba de declararse");
+                                                            RESULT = new DECLARVAR(d, d.getTipo(), id, dcha);    
+                                                        :}
+                  | declarVariable:d COMA IDENT:id
+                                                        {: 
+                                                            if(TablaSimbolos.estaDefinida(id)){
+                                                                Generador.error();
+                                                            } else {
+                                                                // COMENTARIO System.out.println("variable lst "+id+" acaba de declararse");
+                                                                TablaSimbolos.insertar(d.getTipo(), id);
+                                                            }
+                                                            RESULT = new DECLARVAR(d.getTipo(), id);
+                                                        :}
+                  ;
+
+tipo            ::= INT                                 {: RESULT = new TIPO(TIPO.ENTERO); :}
+                  | FLOAT                               {: RESULT = new TIPO(TIPO.REAL); :}
+                  | CHAR                                {: RESULT = new TIPO(TIPO.CARACTER); :}
+                  | STRING                              {: RESULT = new TIPO(TIPO.CADENA); :}
+                  ;
+
+expresion       ::= expresion:e1 IGUALDAD expresion:e2  {: RESULT = new IGUALDAD(e1,e2); :}
+                  | expresion:e1 NOIGUALDAD expresion:e {: RESULT = new NOIGUALDAD(e1,e); :}
+                  | expresion:e1 MENOR expresion:e2     {: RESULT = new MENOR(e1,e2); :}
+                  | expresion:e1 MENOREQ expresion:e    {: RESULT = new MENOREQ(e1,e); :}
+                  | expresion:e1 MAYOR expresion:e2     {: RESULT = new MAYOR(e1,e2); :}
+                  | expresion:e1 MAYOREQ expresion:e    {: RESULT = new MAYOREQ(e1,e); :}
+                  | NOT expresion:c                     {: RESULT = new NOT(c,null); :}
+                  | expresion:c1 AND expresion:c2       {: RESULT = new AND(c1, c2); :}
+                  | expresion:c1 OR expresion:c2        {: RESULT = new OR(c1,c2); :}
+                  | TRUE:t                              {: RESULT = new CTECOND(t, new TIPO(TIPO.expresion)); :}
+                  | FALSE:f                             {: RESULT = new CTECOND(f, new TIPO(TIPO.expresion)); :}
+
+                  | expresion:e1 MAS expresion:e2       {: RESULT = new MAS(e1, e2); :}
+                  | expresion:e1 MENOS expresion:e2     {: RESULT = new MENOS(e1, e2); :}
+                  | expresion:e1 POR expresion:e2       {: RESULT = new POR(e1, e2); :}
+                  | expresion:e1 DIV expresion:e2       {: RESULT = new DIV(e1, e2); :}
+                  | MENOS expresion:e                   {: RESULT = new MENOS(null, e); :} %prec MENOSUNARIO
+                  | AP expresion:e CP                   {: RESULT = e; :}
+                  | ENTERO:n                            {: RESULT = new CTE(n, null, new TIPO(TIPO.ENTERO)); :}
+                  | REAL:r                              {: RESULT = new CTE(r, null, new TIPO(TIPO.REAL)); :}
+                  | CADENA:s                            {: RESULT = new CADENA(s, new TIPO(TIPO.CADENA)); :}
+                  | CARACTER:c                          {: RESULT = new CTE(c, null, new TIPO(TIPO.CARACTER)); :}
+                  | IDENT:id                            {: 
+                                                            TIPO tipo = TablaSimbolos.getTipo(id);
+                                                            if(tipo==null){                                 //Si no ha sido aun declarada emitimos error
+                                                                Generador.error(Generador.E_VND);
+                                                            }
+                                                            if(tipo.getTipo()==TIPO.CONDICION){             //Si es una condicion declarada devolvemos una condicion
+                                                                RESULT = new CTECOND(id, tipo);
+                                                            } else {
+                                                                RESULT = new CTE(id, null, tipo); 
+                                                            }
+                                                        :}
+                  | IDENT:id IGUAL expresion:e          {:  
+                                                            TIPO tipo = TablaSimbolos.getTipo(id);
+                                                            //Si no ha sido declarada emitimos error
+                                                            if(tipo == null){
+                                                                Generador.error();
+                                                            }
+                                                            //Si es declarada pero se le asigna un tipo correcto
+                                                            //emitimos error
+                                                            if(tipo.getTipo() != e.getTipo()){  
+                                                                Generador.error();
+                                                            }
+                                                            RESULT = new ASIG(id, e); 
+                                                        :}        
+
+                  ;
+
+listExp         ::= expresion:e                         {: 
+                                                            RESULT = new ArrayList<AST>();
+                                                            RESULT.add(e);
+                                                        :}
+                  | listExp:le COMA expresion:e         {: 
+                                                            RESULT = le; 
+                                                            RESULT.add(e); 
+                                                        :}
+                  ;

@@ -1,0 +1,92 @@
+import java_cup.runtime.*;
+import java.lang.String;
+import java.util.HashMap;
+import java.lang.Integer;
+
+parser code {:
+	public void syntax_error(Symbol cur_token){
+	}
+
+	public void unrecovered_syntax_error(Symbol cur_token){
+		System.err.println( "Syntax error:"  );
+		// report_error("Syntax error", null);
+		done_parsing();
+	}
+:}
+
+
+action code {:
+				HashMap <String, Integer> ts = new HashMap<String, Integer>();
+			:}
+
+init with {: 
+
+ :}
+
+/* Terminales */
+terminal            MAS, MENOS, MULT, DIVID, MENOSUNARIO, IGUAL, AP, CP, PYC, COMA;
+terminal            WRITE, IF, THEN, ELSE, PRINT;
+terminal            CIGUAL, MENOR, MAYOR;
+terminal            NOT, AND, OR;
+terminal String     ID, CADENA;
+terminal Integer    NUMERO;
+
+/* No terminales */
+non terminal 			axioma;
+non terminal 			sentencia;
+non terminal Integer 	escalar;
+non terminal Boolean 	booleana;
+non terminal String     listaValores;
+non terminal String 	valor;
+
+
+/* Precedencia */
+precedence left 	MAS, MENOS, MENOR, MAYOR, CIGUAL;
+precedence left 	OR;
+precedence left 	MULT, DIVID, AND;
+precedence nonassoc MENOSUNARIO, NOT;
+
+
+/* Gramatica */
+axioma 			::= axioma sentencia
+				  | sentencia
+				  ;
+
+sentencia		::= ID:s IGUAL escalar:n PYC			{: ts.put(s, n); :}
+				  | WRITE AP escalar:n CP PYC			{: System.out.println(n); :}
+				  | PRINT AP listaValores:s CP PYC		{: System.out.println(s); :}
+				  ;
+
+escalar 		::= NUMERO:n 							{: RESULT = n; :}
+				  | escalar:v1 MAS escalar:v2			{: RESULT = v1+v2; :}
+				  | escalar:v1 MENOS escalar:v2			{: RESULT = v1-v2; :}
+				  | escalar:v1 MULT escalar:v2			{: RESULT = v1*v2; :}
+				  | escalar:v1 DIVID escalar:v2			{: RESULT = v1/v2; :}
+				  | MENOS escalar:v 					{: RESULT = -v; :} %prec MENOSUNARIO
+				  | AP escalar:v CP 					{: RESULT = v; :}
+				  | ID:s 								{: RESULT = ts.getOrDefault(s, 0); :}
+				  | IF booleana:b THEN escalar:v1 ELSE escalar:v2	{: 
+				  														if (b) {
+																			RESULT = v1;
+																		} else {
+																			RESULT = v2;
+																		}
+				  													:}
+				  ;
+
+booleana		::= escalar:v1 MAYOR escalar:v2			{: RESULT = v1>v2; :}
+				  | escalar:v1 MENOR escalar:v2			{: RESULT = v1<v2; :}
+				  | escalar:v1 CIGUAL escalar:v2		{: RESULT = (v1==v2); :}
+				  | booleana:v1 OR booleana:v2			{: RESULT = v1|v2; :}
+				  | booleana:v1 AND booleana:v2			{: RESULT = v1&v2; :}
+				  | NOT booleana:v1						{: RESULT = !v1; :}
+				  | AP booleana:b CP					{: RESULT = b; :}
+				  ;
+
+listaValores 	::= listaValores:s COMA valor:v 		{: RESULT = s+v; :}
+				  | valor:v								{: RESULT = v; :}
+				  ;
+
+valor			::= escalar:n							{: RESULT = n.toString(); :}
+				  | CADENA:c 							{: RESULT = c; :}
+				  ;

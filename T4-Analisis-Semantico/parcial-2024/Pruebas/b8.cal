@@ -1,0 +1,5 @@
+a = 6;
+b = 7;
+d = if not a > 7 and b < 3 then a else b;
+write( d );
+

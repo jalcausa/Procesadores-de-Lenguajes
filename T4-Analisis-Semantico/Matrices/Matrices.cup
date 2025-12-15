@@ -1,0 +1,131 @@
+import java_cup.runtime.*;
+import java.util.ArrayList;
+
+action code {: 
+                public void error(String st){
+                    System.out.println(st);
+                    System.exit(-1);
+                }
+            :}
+
+parser code {: 
+                TablaSimbolos ts;
+            :}
+
+/* Terminals (tokens returned by the scanner). */
+
+terminal            COMA, PYC;
+terminal            AP, CP, AC, CC, ALL, CLL;
+terminal            MAS, MENOS, POR, DIV, ASIG;
+terminal            PRINT, INVERSA, TRANSPUESTA, ADJUNTA;
+terminal String     IDENT;
+terminal Double     NUMERO;
+
+
+/* Non terminals */
+non terminal                                axioma;
+non terminal                                linea;
+non terminal double[][]                     matriz;
+non terminal ArrayList<ArrayList<Double>>   listaFilas, listaFilasJava;
+non terminal ArrayList<Double>              fila;
+
+
+/* Precedences */
+precedence left MAS, MENOS;
+precedence left POR, DIV;
+
+
+
+/* The grammar */
+
+axioma      ::= axioma linea
+              | linea
+              ;
+
+linea       ::= PRINT AP matriz:m CP PYC        {: Matrices.print(m); :}
+              | IDENT:s ASIG matriz:m PYC          {: TablaSimbolos.insertar(s, m); :}
+              ;
+
+matriz      ::= AC listaFilas:lf CC             {: RESULT = Matrices.toArray(lf); :}
+              | ALL listaFilasJava:lf CLL       {: RESULT = Matrices.toArray(lf); :}
+              | TRANSPUESTA AP matriz:m CP      {: RESULT = Matrices.transpuesta(m); :}
+              | ADJUNTA AP matriz:m CP          {: 
+                                                    if(Matrices.filas(m) == Matrices.columnas(m)){
+                                                        RESULT = Matrices.adjunta(m); 
+                                                    } else {
+                                                        error(Matrices.ERROR_ADJUNTA);
+                                                    }
+                                                :}
+              | INVERSA AP matriz:m CP          {: 
+                                                    if(Matrices.filas(m) == Matrices.columnas(m)){
+                                                        RESULT = Matrices.inversa(m); 
+                                                    } else {
+                                                        error(Matrices.ERROR_INVERSA);
+                                                    }
+                                                :}
+              | matriz:m1 POR matriz:m2        {: 
+                                                    if(Matrices.columnas(m1) == Matrices.filas(m2)){
+                                                        RESULT = Matrices.producto(m1,m2);
+                                                    } else {
+                                                        error(Matrices.ERROR_PROD);
+                                                    }
+                                                :}
+              | matriz:m1 MAS matriz:m2         {: 
+                                                    if(Matrices.columnas(m1)==Matrices.columnas(m2)){
+                                                        if(Matrices.filas(m1)==Matrices.filas(m2)){
+                                                            RESULT = Matrices.suma(m1, m2);
+                                                        } else {
+                                                            error(Matrices.ERROR_SUMA);
+                                                        }
+                                                    } else {
+                                                        error(Matrices.ERROR_SUMA);
+                                                    }
+                                                :}
+              | AP matriz:m CP                  {: RESULT = m; :}
+              | matriz:m1 MAS NUMERO:n          {: RESULT = Matrices.suma(n, m1); :}
+              | matriz:m1 MENOS NUMERO:n        {: RESULT = Matrices.suma(-n, m1); :}
+              | NUMERO:n MAS matriz:m1          {: RESULT = Matrices.suma(n, m1); :}
+              | NUMERO:n MENOS matriz:m1        {: RESULT = Matrices.suma(-n, m1); :}
+              | matriz:m1 POR NUMERO:n          {: RESULT = Matrices.producto(n,m1); :}
+              | NUMERO:n POR matriz:m1          {: RESULT = Matrices.producto(n,m1); :} 
+              | IDENT:s                         {: 
+                                                    RESULT = TablaSimbolos.buscar(s);
+                                                    if (RESULT == null){
+                                                        error(TablaSimbolos.ERROR_NOEXISTE);
+                                                    }
+                                                :}
+              ;
+
+listaFilas  ::= listaFilas:lf PYC fila:f        {: 
+                                                    if (f.size() == lf.get(0).size()){
+                                                        lf.add(f);
+                                                        RESULT = lf;
+                                                    } else {
+                                                        error(Matrices.ERROR_FILAS);
+                                                    }
+                                                :}
+              | fila:f                          {: 
+                                                    RESULT = new ArrayList<ArrayList<Double>>();
+                                                    RESULT.add(f);
+                                                :}
+              ;
+
+fila        ::= fila:f COMA NUMERO:n            {:
+                                                    f.add(n);
+                                                    RESULT = f;
+                                                :}
+              | NUMERO:n                        {: 
+                                                    RESULT = new ArrayList<Double>();
+                                                    RESULT.add(n);
+                                                :}
+              ;
+
+listaFilasJava ::= listaFilasJava:lf COMA ALL fila:f CLL    {: 
+                                                                lf.add(f);
+                                                                RESULT = lf;
+                                                            :}
+                 | ALL fila:f CLL                           {: 
+                                                                RESULT = new ArrayList<ArrayList<Double>>();
+                                                                RESULT.add(f);
+                                                            :}
+                 ;

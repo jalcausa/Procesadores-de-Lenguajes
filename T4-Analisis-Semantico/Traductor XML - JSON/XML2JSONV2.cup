@@ -1,0 +1,125 @@
+import java_cup.runtime.*;
+import java.util.*;
+
+action code {: 
+                public boolean esLista(String key, ArrayList<String> ls){
+                    boolean res = true;
+                    int l = key.length();
+                    for (String s : ls){
+                        key = key.substring(0,l-1);
+                        String subs = s.substring(0,l-1);
+                        if (!key.equals(subs)){
+                            res = false;
+                        }
+                    }
+                    return res;
+                }
+            :}
+
+/* Terminals (tokens returned by the scanner). */
+terminal String OPEN_TAG, CLOSE_TAG;
+terminal String TEXT;
+
+/* Non terminals */
+non terminal                    axioma;
+non terminal ArrayList<String>  programa;
+non terminal ArrayList<String>  listaSent;
+non terminal String             sent;
+non terminal String             tag;
+
+
+/* Precedences */
+
+
+
+/* The grammar */
+axioma      ::= programa:p                              {: 
+                                                            System.out.println("{"); 
+                                                            if(p.size()>1){
+                                                                for (int i = 0; i<p.size()-1; i++){
+                                                                    System.out.println(p.get(i)+",");
+                                                                }
+                                                                System.out.println(p.get(p.size()-1));
+                                                            } else {
+                                                                System.out.println(p.get(0));
+                                                            }
+                                                            System.out.println("}");
+                                                        :}
+              ;
+                           
+programa    ::= programa:p sent:s                       {:  p.add(s); RESULT = p; :}
+              | sent:s                                    {: RESULT = new ArrayList<String>(); RESULT.add(s); :}
+              ;
+
+
+sent        ::= tag:t                                   {: RESULT = t; :}
+              | OPEN_TAG:k CLOSE_TAG:k1                 {: 
+                                                            if(k.equals(k1)){
+                                                                String res = "";
+                                                                res += k.substring(0,k.length()-1);
+                                                                res +=":[]";
+                                                                RESULT = res;
+                                                            }
+                                                        :}
+              | OPEN_TAG:k listaSent:ls CLOSE_TAG:k1    {:  
+                                                            String res = "";
+                                                            if(esLista(k, ls)){
+                                                                int c = k.length()-1;
+                                                                String s = k.substring(0, c);
+                                                                res += s;
+                                                                res += ":[";
+                                                                if(ls.size()>1){
+                                                                    for(int i = 0; i<ls.size()-1; i++){
+                                                                        String subcad = ls.get(i).substring(c+1, ls.get(i).length());
+                                                                        res += subcad;
+                                                                        res += ",";
+                                                                    }
+                                                                    String subcad = ls.get(ls.size()-1).substring(c+1, ls.get(ls.size()-1).length());
+                                                                    res += subcad;
+                                                                    res += "]";
+                                                                } else {
+                                                                    String subcad = ls.get(0).substring(c+1, ls.get(0).length());
+                                                                    res += subcad;
+                                                                    res += "]";
+                                                                }
+                                                                RESULT = res;
+                                                            } else {
+                                                                if(k.equals(k1)){
+                                                                    res = k+":{"+"\n";
+                                                                    if (ls.size()>1){
+                                                                        for (int i = 0; i<ls.size()-1; i++){
+                                                                            res += ls.get(i);
+                                                                            res += ",";
+                                                                            res += "\n";
+                                                                        }
+                                                                        res += ls.get(ls.size()-1);
+                                                                        res += "\n";
+                                                                    } else {
+                                                                        res += ls.get(0);
+                                                                        res += "\n";
+                                                                    }
+                                                                    res+="}";
+                                                                    RESULT = res;
+                                                                } else {
+                                                                    System.out.println("FALLO REGLA 2 TAG");
+                                                                }
+                                                            }
+                                                        :}
+              ;
+
+tag         ::= OPEN_TAG:k TEXT:s CLOSE_TAG:k1          {: 
+                                                            String res="";
+                                                            if(k.equals(k1)){
+                                                                res = k+":"+s;
+                                                                RESULT = res;
+                                                            } else {
+                                                                System.out.println("FALLO REGLA1 TAG");
+                                                            }
+                                                        :}
+              ;
+
+listaSent   ::= listaSent:ls sent:s                      {: RESULT = ls; RESULT.add(s); :}
+              | sent:s                                   {: RESULT = new ArrayList<String>(); RESULT.add(s); :}
+              ;
+
+
