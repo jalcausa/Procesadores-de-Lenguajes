@@ -1,0 +1,509 @@
+skip to content
+
+Skenz - How To Wiki
+User Tools
+Log In
+Site Tools
+Search
+Search
+Recent ChangesMedia ManagerSitemap
+Trace: • llvm
+compilers:llvm
+Return to Home page
+Table of Contents
+LLVM
+Front-end
+Middle-end
+Back-end
+Intermediate representation
+Identifiers
+Data types
+Global variables
+Strings
+Functions
+Terminator instructions
+Binary Operations
+Bitwise operations
+Vector operations
+Conversion operations
+Memory access operations
+Comparison operators
+Other instructions
+Implementation of "if" statement
+Implementation of "while" statement
+From C/C++ to LLVM IR
+Clang
+Step by step example to produce and execute LLVM IR in human-readable assembly format
+Producing LLVM IR target machine assembly, object files and executables
+LLVM
+LLVM is a compiler and a toolkit for building compilers, which are programs that convert instructions into a machine language, so that it can be read and executed by a computer.
+
+Installation: it can be simply installed by opening the terminal and entering the following line: sudo apt install llvm
+
+It is made up of three components: Front-end, Middle-end and the Back-end.
+
+Front-end
+The frontend compiler takes a source code in a supported language as input (like C, C++, Objective C, Ada, Rust, Fortran) and produces an Itermediate Representation in LLVM IR syntax.
+
+Middle-end
+This module transforms the IR, applying some analysis, optimizations and transformations.
+
+Back-end
+The back-end takes the Itermediate Representation optimized by the middle-end, and generates the native code for a given machine, like ARM, MIPS, Intel, Sparc, etc., ready to be executed by the target machine.
+
+LLVM
+
+Intermediate representation
+The intermediate representation LLVM (IR) is independent from both the language and the architecture; it is placed between the source code in a given programming language and the machine code for a specific architecture.
+
+LLVM IR is a low-level programming language similar to assembly. IR is a strongly typed RISC instruction set, with an infinite set of temporary “registers” (which are numbered, like %0, %1, etc.), instead of a fixed set of registers. A new register is created to store the result of every instruction.
+
+There are three common representations of IR:
+
+a human-readable LLVM assembly (.ll files)
+an in-memory format suitable for frontends
+a dense bitcode binary representation (.bc files)
+Each register can be assigned to only once, LLVM is indeed a Static Single Assignment (SSA) based representation. Let's consider a multiple assignment:
+
+int var = func();
+var++;
+Which could be translated into the following LLVM IR:
+
+%0 = call i32 @func()
+%0 = add i32 %0, 1
+This translation is wrong, because a register can be assigned only once. This is a correct translation:
+
+%0 = call i32 @func()
+%1 = add i32 %0, 1
+Code is organized as three-address instructions: data processing instructions have two source operands and store the result in a distinct destination operand.
+
+Identifiers
+There are two basic identifiers: global and local. Global identifiers are related to functions and global variables, and start with the symbol @. Local identifiers, instead, represent register names, types, and start with the % character.
+
+This example adds 5 to the integer variable %1
+
+%2 = load i32, i32* %1, align 4
+%3 = add nsw i32 %2, 5
+store i32 %3, i32* %1, align 4
+Notice the single assignment and the sequence of operations: Variable %1 is first loaded and stored into register %2. Then, the addition between %2 and value 5 is computed and the result is stored in register %3. Finally, register %3 is stored into the original variable %1.
+
+These operations describe how LLVM IR works: all used variables must be loaded into a new register, which is used to access to the value of the original value. When the result is computed (and stored into another register), it must be stored into the original variable.
+
+Data types
+These are the main basic data types supported by LLVM IR:
+
+Integer: iN, where N is the number of bits occupied by the integer (i32, i1, i8)
+Floating-point types:
+half (16-bit)
+float (32-bit)
+double (64-bit)
+Pointer: <type>*
+[4 x i32]*: pointer to array of four i32 values
+double*: pointer to a double value
+Array: [<#elements> x <elementtype>]
+[40 x i32]: array of 40 32-bit integer values
+Global variables
+A global variable is declared with the syntax @<name> = global <type> <init_value>
+
+This line shows the declaration of an integer global variable named X, initialized with value 17.
+
+@X = global i32 17
+Strings
+A string is declared with the following syntax:
+
+@X = constant [<string length> x i8] c<string content>, align 1
+14 is the string length
+strings must be declared with a global name (like @.str.0….)
+strings' label numbering is independent from the labels' numbering inside the main part
+An example:
+
+@.str.0 = constant [14 x i8] c"Hello world:\0A\00", align 1
+Functions
+A function is declared with the syntax:
+
+define <retval> @<funcName> (<type>, ..., <type>) {
+  ...
+  ret <type> <expression>
+}
+This piece of code shows the definition of a function named func, which returns an integer value and receives two integers and one pointer to an integer:
+
+define i32 @func(i32, i32, i32*) {
+  //body
+ 
+  ret i32 1
+}
+Terminator instructions
+A terminator instruction is placed at the end of a basic block, and indicates which block sohuld be executed after the termination of the current one.
+
+“ret” instruction
+This instruction is used to return back to the caller function.
+
+Syntax:
+
+ret <type> <value>
+ret void: returns from a void function
+Example: ret i32 10
+
+“br” instruction
+Branch instruction is used to jump to a specific label of the code. There are two forms of this instruction: conditional branch and unconditional branch.
+
+Syntax:
+
+br i1 <cond>, label <iftrue>, label <iffalse>: conditional branch
+br label <dest>: unconditional branch
+Example:
+
+  %3= icmp eq i32 %1, %2 //compare %1 with %2, store result in %3
+  br i1 %3, label %trueLabel, label %falseLabel 
+trueLabel:
+  ret i32 1
+falseLabel :
+  ret i32 0
+Binary Operations
+A binary operation takes two operands of the same type, executes an operation and returns a single value in a new register.
+
+“add” instruction
+Returns the sum of two integer operands.
+
+Syntax: <result> = add <type> <op1>, <op2>
+
+Example %1 = add i32 %0, 5
+
+“fadd” instruction
+Returns the sum of two floating-point operands.
+
+Syntax: <result> = fadd <type> <op1>, <op2>
+
+“sub” instruction
+Returns the difference of two integer operands.
+
+Syntax: <result> = sub <type> <op1>, <op2>
+
+Example %1 = sub i32 %0, 5
+
+“fsub” instruction
+Returns the difference of two floating-point operands.
+
+Syntax: <result> = fsub <type> <op1>, <op2>
+
+“mul” instruction
+Returns the product of two integer operands.
+
+Syntax: <result> = mul <type> <op1>, <op2>
+
+Example %1 = mul i32 %0, 5
+
+“fmul” instruction
+Returns the product of two floating-point operands.
+
+Syntax: <result> = fmul <type> <op1>, <op2>
+
+“sdiv” instruction
+Returns the quotient of two integer operands.
+
+Syntax: <result> = sdiv <type> <op1>, <op2>
+
+Example %1 = sdiv i32 %0, 5
+
+“fdiv” instruction
+Returns the quotient of two floating-point operands.
+
+Syntax: <result> = fdiv <type> <op1>, <op2>
+
+Bitwise operations
+“and” instruction
+Returns the bitwise logical and of two integer operands.
+
+Syntax: <result> = and <type> <op1>, <op2>
+
+Example %1 = and i32 %0, 5
+
+“or” instruction
+Returns the bitwise logical or of two integer operands.
+
+Syntax: <result> = or <type> <op1>, <op2>
+
+Example %1 = or i32 %0, 5
+
+“xor” instruction
+Returns the bitwise logical exclusive or of two integer operands.
+
+Syntax: <result> = xor <type> <op1>, <op2>
+
+Example %1 = xor i32 %0, 5
+
+Vector operations
+LLVM offers instructions to manipulate vectors independently by the target architecture optimizations.
+
+“extractelement” instruction
+This instruction retrieves a single element from a vector, given its index. The returned value is of the same type as the vector elements.
+
+Syntax: <result> = extractelement <n x <type> > <vec>, <type> <index>
+
+Example: <result> = extractelement <4 x i32> %vec, i32 0: returns a i32 integer
+
+“insertelement” instruction
+This instruction inserts a scalar into a vector at a given index, replacing the previous element. The first operand is a vector, the second is a scalar and the third is the index.
+
+Syntax: <result> = insertelement <n x <type> > <vect>, <type> <element>, <type> <index>
+
+Example: <result> = insertelement <4 x i32> %vec, i32 1, i32 0: returns a <4 x i32> vector
+
+“shufflevector” instruction
+This instruction creates a new vector in which each element is taken from one of the two input vectors. The first two operands are the vectors from which choosing elements and the third operand is a mask vector. The resulting vector has the same type of the elements of the first vector and the same lenght of the mask vector. Each element of the mask is an index used to select which element to choose from the concatenation of the first two vectors.
+
+Syntax: <result> = shufflevector <n x <type> > <vec1>, <n x <type> > <vec2>, <m x i32> <mask>
+
+Example: <result> = shufflevector <4 x i32> %v1, <4 x i32> %v2, <4 x i32> <i32 0, i32 4, i32 1, i32 5>: returns a <4 x i32> vector containing the elements at index 0, 4, 1 and 5 of the array obtained from the concatenation of v1 and v2
+
+“insertelement” instruction
+This instruction inserts a scalar into a vector at a given index, replacing the previous element. The first operand is a vector, the second is a scalar and the third is the index.
+
+Syntax: <result> = insertelement <n x <type> > <vect>, <type> <element>, <type> <index>
+
+Example: <result> = insertelement <4 x i32> %vec, i32 1, i32 0: returns a <4 x i32> vector
+
+Conversion operations
+LLVM offers instructions to convert operands, they take as input an operand and a type.
+
+“trunc … to” instruction
+This instruction takes as parameters the value to trunc and the type to which we want to trunc it. In particular it truncates the high order bits and converts the remaining to the desired type.
+
+Syntax: <result> = trunc <type> <value> to <type2>
+
+Example:
+
+%X = trunc i32 257 to i8: returns a i8 value
+%Y = trunc i32 123 to i1: returns a i1 value(true)
+%Z = trunc i32 122 to i1: returns a i1 value(false)
+“zext … to” instruction
+This instruction fills the high order bits of the operand until reaching the size of the provided type.
+
+Syntax: <result> = zext <type> <value> to <type2>
+
+Example:
+
+%X = zext i32 257 to i64: returns a i64 (257)
+%Y = zext i1 true to i32: returns a i32 value(1)
+sext … to“ instruction
+This instruction extends the sign bit of a value until reaching the size of the provided type.
+
+Syntax: <result> = sext <type> <value> to <type2>
+
+Example: %X = sext i8 -1 to i16: extends - sign (0xF) to all the remaining 8 bits, obtaining 65535 (2^16-1)
+
+fptosi … to” instruction
+This instruction cast a floating point value to the provided integer type. This works for signed integers.
+
+Syntax: <result> = fptosi <type> <value> to <type2>
+
+Example: %X = fptosi double -123.0 to i32 : returns i32 (-123)
+
+sitofp … to“ instruction
+This instruction cast a signed integer value to the provided floating point type.
+
+Syntax: <result> = sitofp <type> <value> to <type2>
+
+Example: %X = sitofp i32 257 to float: returns float (257)
+
+Memory access operations
+“alloca” instruction
+This instruction allocates memory on the stack frame of the current function, and it is automatically released when the function returns to its caller. It returns a pointer to the allocated memory.
+
+alloca instruction is used to allocate local data of any type (simple variables, arrays, pointers).
+
+Syntax: <result> = alloca <type>, <align> <num>
+
+Example:
+
+%1 = alloca [9 x i32], align 4: allocates an array of 9 integers
+%1 = alloca i32, align 4: allocates an integer variable
+“load” instruction
+This instruction is used to read data from memory.
+
+Syntax: <result> = load <type>, <type>* <address>
+
+Example: %1 = load i32, i32* %0: load value stored in variable %0
+
+“store” instruction
+This instruction is used to write data to the memory.
+
+Syntax: <result> = store <type> <expression>, <type>* <address>
+
+Example: %1 = store i32 10, i32* %0: store value 10 in variable %0
+
+“getelementptr” instruction
+This instruction is used to get the address of a subelement of a data structure. It can be used, among the other things, to access to a specific cell of an array.
+
+Syntax: <result> = getelementptr inbounds [<#elements> x <type>], [<#elements> x <type>]* <variable>, i32 0, i32 <index>: specific syntax to access to an element of an array.
+
+Example: %2 = getelementptr inbounds [9 x i32], [9 x i32]* %1, i32 0, i32 7: access to cell at index 7 of array stored in %1.
+
+Comparison operators
+“icmp” instruction
+This instruction compares two integers and returns a boolean value (i1) based on the specified condition.
+
+Syntax: <result> = icmp <cond> <type> <op1>, <op2>
+
+The <cond> indicates the type of comparison. Possible codes are:
+
+eq: equal
+ne: not equal
+ugt: unsigned greater than
+uge: unsigned greater or equal
+ult: unsigned ess than
+ule: unsigned less or equal
+sgt: signed greater than
+sge: signed greater or equal
+slt: signed less than
+sle: signed less or equal
+Example: %1 = icmp eq i32 %0, 5
+
+“fcmp” instruction
+This instruction compares two floating-point values and returns a boolean value (i1) based on the specified condition.
+
+Syntax: <result> = fcmp <cond> <type> <op1>, <op2>
+
+The <cond> indicates the type of comparison. Possible codes are:
+
+oeq: ordered and equal
+ogt: ordered and greater than
+oge: ordered and greater than or equal
+olt: ordered and less than
+ole: ordered and less than or equal
+one: ordered and not equal
+There are also the corresponding unordered keywords, obtained replacing “o” with “u”.
+
+Example: %1 = fcmp oeq double %0, 5.2
+
+Other instructions
+“call” instruction
+This instruction is used to call a function.
+
+Syntax: <retval> = call <rettype> @<funcname>(<param_type> <param_value>, …)
+
+<rettype> is the function return value, while it is possible to pass parameters enclosing them in brackets, after the function name. For each parameter is necessary to specify its type and its value.
+
+If the called function returns a non-void value, it is stored in the <retval> variable.
+
+Example: %1 = call i32 @test(i32 %0): call function @test, passing one integer number, and store the return value in register %1
+
+Implementation of "if" statement
+A decision statement can be implemented using comparison and branch instructions:
+
+Let's consider the following piece of code:
+
+if (var < 10){
+ //do something
+}else{
+ //do something else
+}
+This statement can be implemented in the follwing way:
+
+compare var with 10 using icmp instruction
+branch to a true label if true, otherwise go to an else label
+at the end of the true block, jump to the exit label to avoid the else block
+The result is like the following one:
+
+%1 = icmp slt i32 %0, 10 ;%0 < 10 ?
+br i1 %1, label %if.body.0, label %if.else.0
+if.body.0: ;true block
+  ;do something
+  br label %if.exit.0 ;exit from condition
+if.else.0: ;else block
+  ;do something else
+  br label %if.exit.0
+if.exit.0:
+Implementation of "while" statement
+As for “if” statement, also the “while” can be implemented using comparison and branch instructions:
+
+Let's consider the following code:
+
+while (var < 10){
+ //do something
+}
+It can be implemented in few steps:
+
+create a cond label before the condition instruction
+compare var with 10 using icmp instruction
+branch to a while body label if true, otherwise go to an exit label
+at the end of the while body block, jump to the cond label to re-evaluate the condition
+The result is like the following one:
+
+br label %for.cond.0
+for.cond.0:
+  %1 = load i32, i32* %0, align 4
+  %2 = icmp slt i32 %1, 10
+  br i1 %2, label %for.body.0, label %for.exit.0
+for.body.0:
+  ;do something
+  br label %for.cond.0 ;go back to the condition instruction
+for.exit.0:
+From C/C++ to LLVM IR
+Clang
+Clang is a front-end compiler used to compile codes written in C, C++, Objective-C and Objective-C++, developed by LLVM group.
+
+It normally produces a binary file that is directly executable, but it is also possible to generate the Intermediate Representation code, executable using LLVM. There are two formats in which Clang can emit LLVM IR: a human-readable assembly format (.ll) and a dense bitcode format for serializing (.bc).
+
+Step by step example to produce and execute LLVM IR in human-readable assembly format
+First of all, it is necessary to install clang using the instruction: sudo apt install clang.
+Then, write a source code in a language supported by clang, like the following one:
+hello_world.c
+#include <stdio.h>
+int main (){
+  printf("Hello World!");
+ 
+  return 0;
+}
+Open the terminal and execute the following instruction, used to produce the corresponding LLVM IR: clang -S -emit-llvm <filename>.c
+It generates the following file named <filename>.ll
+hello_world.ll
+@.str = private unnamed_addr constant [13 x i8] c"Hello World!\00", align 1
+ 
+; Function Attrs: noinline nounwind optnone uwtable
+define i32 @main() #0 {
+  %1 = alloca i32, align 4
+  store i32 0, i32* %1, align 4
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str, i32 0, i32 0))
+  ret i32 0
+}
+ 
+declare i32 @printf(i8*, ...) #1
+Run the command: lli <filename>.ll to run the program
+lli is an LLVM command which takes a program in LLVM bitcode format and executes it using a just-in-time compiler or an interpreter. It is not an emulator, since it compiles and runs the code for the host architecture.
+
+Producing LLVM IR target machine assembly, object files and executables
+The process to get target machine assembly from C/C++ code is very similar to the one above:
+Then, write a source code in a language supported by clang, like the following one:
+hello_world.c
+#include <stdio.h>
+int main (){
+  printf("Hello World!");
+ 
+  return 0;
+}
+Open the terminal and execute the following instruction, used to produce the corresponding LLVM IR: clang -S -emit-llvm <filename>.c
+It generates the following file named <filename>.ll
+hello_world.ll
+@.str = private unnamed_addr constant [13 x i8] c"Hello World!\00", align 1
+ 
+; Function Attrs: noinline nounwind optnone uwtable
+define i32 @main() #0 {
+  %1 = alloca i32, align 4
+  store i32 0, i32* %1, align 4
+  %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([13 x i8], [13 x i8]* @.str, i32 0, i32 0))
+  ret i32 0
+}
+ 
+declare i32 @printf(i8*, ...) #1
+Run the command: llc <filename>.bc –o <filename>.s to compile LLVM source inputs into assembly language for a specified architecture.
+Alternatively, to produce an object file that can be then used to create an executable with any C/C++ compiler run: llc -filetype=obj <filename>.ll.
+What's left is is to run either gcc <filename>.o or clang <filename>.o to link the object file and create the executable a.out that can be be run in the following way ./a.out.
+If you found any error, or if you want to partecipate to the editing of this wiki, please contact: admin [at] skenz.it
+
+You can reuse, distribute or modify the content of this page, but you must cite in any document (or webpage) this url: https://www.skenz.it/compilers/llvm
+/web/htdocs/www.skenz.it/home/data/pages/compilers/llvm.txt · Last modified: 2024/04/08 22:34 by 127.0.0.1
+Page Tools
+Donate Powered by PHP Valid HTML5 Valid CSS Driven by DokuWiki
+
+Le tue preferenze relative al consenso per le tecnologie di tracciamento

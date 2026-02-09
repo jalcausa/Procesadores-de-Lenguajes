@@ -1,0 +1,99 @@
+	c_length = 0;
+	t0_length = 0;
+	t0[t0_length] = 65;
+	t0_length = t0_length + 1;
+	t0[t0_length] = 66;
+	t0_length = t0_length + 1;
+	t0[t0_length] = 67;
+	t0_length = t0_length + 1;
+	c_length = 0;
+	t3 = 0;
+L0:
+	if(t3 < t0_length) goto L1;
+	goto L2;
+L1:
+	t4 = t0[t3];
+	c[c_length] = t4;
+	c_length = c_length + 1;
+	t3 = t3 + 1;
+	goto L0;
+L2:
+	d_length = 0;
+	t1_length = 0;
+	t1[t1_length] = 66;
+	t1_length = t1_length + 1;
+	t1[t1_length] = 65;
+	t1_length = t1_length + 1;
+	t1[t1_length] = 68;
+	t1_length = t1_length + 1;
+	d_length = 0;
+	t5 = 0;
+L3:
+	if(t5 < t1_length) goto L4;
+	goto L5;
+L4:
+	t6 = t1[t5];
+	d[d_length] = t6;
+	d_length = d_length + 1;
+	t5 = t5 + 1;
+	goto L3;
+L5:
+	t2_length = 0;
+	t7 = 0;
+L6:
+	if(t7 < c_length) goto L7;
+	goto L8;
+L7:
+	t8 = c[t7];
+	t2[t2_length] = t8;
+	t2_length = t2_length + 1;
+	t7 = t7 + 1;
+	goto L6;
+L8:
+	t9 = 0;
+L9:
+	if(t9 < d_length) goto L10;
+	goto L11;
+L10:
+	t10 = d[t9];
+	t12 = 0;
+	t11 = 0;
+L12:
+	if(t11 < t2_length) goto L13;
+	goto L14;
+L13:
+	t13 = t2[t11];
+	if(t13 == t10) goto L15;
+	goto L17;
+L15:
+	t12 = 1;
+	goto L14;
+L17:
+	t11 = t11 + 1;
+	goto L12;
+L14:
+	if(t12 == 0) goto L16;
+	goto L10_next;
+L16:
+	t2[t2_length] = t10;
+	t2_length = t2_length + 1;
+L10_next:
+	t9 = t9 + 1;
+	goto L9;
+L11:
+	t14 = 0;
+L18:
+	if(t14 < t2_length) goto L19;
+	goto L20;
+L19:
+	if(t14 == 0) goto L21;
+	goto L22;
+L22:
+	writec 32;
+L21:
+	t15 = t2[t14];
+	writec t15;
+	t14 = t14 + 1;
+	goto L18;
+L20:
+	writec 10;

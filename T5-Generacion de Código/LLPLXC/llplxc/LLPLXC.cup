@@ -1,0 +1,146 @@
+/*
+ * LLPLXC.cup
+ * Especificación sintáctica CUP para el compilador PLX a LLVM IR
+ * 
+ * Define la gramática del lenguaje PLX y las acciones semánticas
+ * para generar código intermedio LLVM IR.
+ */
+
+import java_cup.runtime.*;
+import java.util.*;
+
+/* ----- Declaración de terminales ----- */
+terminal MAS, MENOS, POR, DIV;                                      // Operadores aritméticos
+terminal MENOSUNARIO;                                               // Menos unario (para precedencia)
+terminal IGUAL;                                                     // Operador de asignación
+terminal PARENABRE, PARENCIERRA, LLAVEABRE, LLAVECIERRA;           // Delimitadores
+terminal PYC, COMA;                                                 // Punto y coma, coma
+terminal MAYOR, MENOR, IGUALDAD, NOIGUALDAD, MENORIGUAL, MAYORIGUAL; // Operadores relacionales
+terminal AND, OR, NOT;                                              // Operadores lógicos
+terminal PRINT, INT, IF, DO, WHILE, ELSE, FOR;                     // Palabras reservadas
+terminal String IDENT, ENTERO;                                      // Identificadores y constantes
+
+/* ----- Declaración de no terminales ----- */
+non terminal axioma;                                                // Símbolo inicial
+non terminal AST listaSentencias, sentencia, declaracion, listaIdent; // Sentencias y declaraciones
+non terminal EXPRESION expresion, expresionOpcional;                // Expresiones aritméticas
+non terminal CONDICION condicion;                                   // Condiciones lógicas/relacionales
+
+/* ----- Precedencia de operadores (de menor a mayor) ----- */
+precedence right IGUAL;                                             // Asignación asocia a la derecha
+precedence left OR;                                                 // OR lógico
+precedence left AND;                                                // AND lógico
+precedence left IGUALDAD, NOIGUALDAD;                              // Igualdad/desigualdad
+precedence left MENOR, MAYOR, MENORIGUAL, MAYORIGUAL;              // Operadores relacionales
+precedence left MAS, MENOS;                                         // Suma y resta
+precedence left POR, DIV;                                           // Multiplicación y división
+precedence right NOT;                                               // NOT lógico
+precedence right MENOSUNARIO;                                       // Menos unario
+precedence nonassoc ELSE;                                           // Para resolver conflicto if-else
+
+/* ----- Gramática ----- */
+
+/* Axioma: genera la cabecera LLVM al inicio y el cierre al final */
+axioma          ::= {:
+                        // Cabecera estándar LLVM IR
+                        Generador.emitirCabecera();
+                    :}
+                    listaSentencias:ls
+                    {:
+                        // Generar código de todas las sentencias
+                        ls.generarCodigo();
+                        // Instrucción de retorno
+                        Generador.emitirRetorno();
+                    :}
+                  ;
+
+/* Lista de sentencias */
+listaSentencias ::= sentencia:s
+                    {: RESULT = new AST(null, s); :}
+                  | listaSentencias:ls sentencia:s
+                    {: RESULT = new AST(ls, s); :}
+                  ;
+
+/* Diferentes tipos de sentencias */
+sentencia       ::= expresion:e PYC
+                    {: RESULT = e; :}
+                  | declaracion:d
+                    {: RESULT = d; :}
+                  | PRINT PARENABRE expresion:e PARENCIERRA PYC
+                    {: RESULT = new PRINT(e); :}
+                  | LLAVEABRE listaSentencias:ls LLAVECIERRA
+                    {: RESULT = ls; :}
+                  | IF PARENABRE condicion:c PARENCIERRA sentencia:s
+                    {: RESULT = new IF(c, s); :}
+                  | IF PARENABRE condicion:c PARENCIERRA sentencia:s1 ELSE sentencia:s2
+                    {: RESULT = new IFELSE(c, s1, s2); :}
+                  | WHILE PARENABRE condicion:c PARENCIERRA sentencia:s
+                    {: RESULT = new WHILE(c, s); :}
+                  | DO sentencia:s WHILE PARENABRE condicion:c PARENCIERRA PYC
+                    {: RESULT = new DOWHILE(s, c); :}
+                  | FOR PARENABRE expresionOpcional:e1 PYC condicion:c PYC expresionOpcional:e2 PARENCIERRA sentencia:s
+                    {: RESULT = new FOR(e1, c, e2, s); :}
+                  ;
+
+/* Declaración de variables enteras */
+declaracion     ::= INT listaIdent:l PYC
+                    {: RESULT = l; :}
+                  ;
+
+/* Lista de identificadores en una declaración */
+listaIdent      ::= IDENT:id
+                    {: RESULT = new DECLARACION(id); :}
+                  | listaIdent:l COMA IDENT:id
+                    {: RESULT = new AST(l, new DECLARACION(id)); :}
+                  ;
+
+/* Expresiones aritméticas y asignación */
+expresion       ::= expresion:e1 MAS expresion:e2
+                    {: RESULT = new MAS(e1, e2); :}
+                  | expresion:e1 MENOS expresion:e2
+                    {: RESULT = new MENOS(e1, e2); :}
+                  | expresion:e1 POR expresion:e2
+                    {: RESULT = new POR(e1, e2); :}
+                  | expresion:e1 DIV expresion:e2
+                    {: RESULT = new DIV(e1, e2); :}
+                  | MENOS expresion:e
+                    {: RESULT = new MENOSUNARIO(e); :} %prec MENOSUNARIO
+                  | PARENABRE expresion:e PARENCIERRA
+                    {: RESULT = e; :}
+                  | IDENT:id IGUAL expresion:e
+                    {: RESULT = new ASIG(id, e); :}
+                  | IDENT:id
+                    {: RESULT = new VARIABLE(id); :}
+                  | ENTERO:n
+                    {: RESULT = new CTE(n); :}
+                  ;
+
+/* Expresión opcional (puede ser vacía, usada en for) */
+expresionOpcional ::= expresion:e
+                    {: RESULT = e; :}
+                  |   /* vacío */
+                    {: RESULT = null; :}
+                  ;
+
+/* Condiciones relacionales y lógicas */
+condicion       ::= expresion:e1 IGUALDAD expresion:e2
+                    {: RESULT = new IGUALDAD(e1, e2); :}
+                  | expresion:e1 NOIGUALDAD expresion:e2
+                    {: RESULT = new NOIGUALDAD(e1, e2); :}
+                  | expresion:e1 MENOR expresion:e2
+                    {: RESULT = new MENOR(e1, e2); :}
+                  | expresion:e1 MENORIGUAL expresion:e2
+                    {: RESULT = new MENORIGUAL(e1, e2); :}
+                  | expresion:e1 MAYOR expresion:e2
+                    {: RESULT = new MAYOR(e1, e2); :}
+                  | expresion:e1 MAYORIGUAL expresion:e2
+                    {: RESULT = new MAYORIGUAL(e1, e2); :}
+                  | NOT condicion:c
+                    {: RESULT = new NOT(c); :}
+                  | condicion:c1 AND condicion:c2
+                    {: RESULT = new AND(c1, c2); :}
+                  | condicion:c1 OR condicion:c2
+                    {: RESULT = new OR(c1, c2); :}
+                  | PARENABRE condicion:c PARENCIERRA
+                    {: RESULT = c; :}
+                  ;

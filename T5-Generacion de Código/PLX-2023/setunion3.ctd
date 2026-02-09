@@ -1,0 +1,145 @@
+	c_length = 0;
+	d_length = 0;
+	t0_length = 0;
+	t0[t0_length] = 1;
+	t0_length = t0_length + 1;
+	t0[t0_length] = 2;
+	t0_length = t0_length + 1;
+	t0[t0_length] = 3;
+	t0_length = t0_length + 1;
+	c_length = 0;
+	t4 = 0;
+L0:
+	if(t4 < t0_length) goto L1;
+	goto L2;
+L1:
+	t5 = t0[t4];
+	c[c_length] = t5;
+	c_length = c_length + 1;
+	t4 = t4 + 1;
+	goto L0;
+L2:
+	t1_length = 0;
+	t6 = 0;
+L3:
+	if(t6 < c_length) goto L4;
+	goto L5;
+L4:
+	t7 = c[t6];
+	t1[t1_length] = t7;
+	t1_length = t1_length + 1;
+	t6 = t6 + 1;
+	goto L3;
+L5:
+	t8 = 0;
+	t9 = 0;
+L6:
+	if(t9 < t1_length) goto L7;
+	goto L8;
+L7:
+	t10 = t1[t9];
+	if(t10 == 4) goto L9;
+	goto L11;
+L9:
+	t8 = 1;
+	goto L8;
+L11:
+	t9 = t9 + 1;
+	goto L6;
+L8:
+	if(t8 == 0) goto L10;
+	goto L12;
+L10:
+	t1[t1_length] = 4;
+	t1_length = t1_length + 1;
+L12:
+	t3_length = 0;
+	t11 = 0;
+L13:
+	if(t11 < t1_length) goto L14;
+	goto L15;
+L14:
+	t12 = t1[t11];
+	t3[t3_length] = t12;
+	t3_length = t3_length + 1;
+	t11 = t11 + 1;
+	goto L13;
+L15:
+	t2_length = 0;
+	t2[t2_length] = 5;
+	t2_length = t2_length + 1;
+	t13 = 0;
+L16:
+	if(t13 < t2_length) goto L17;
+	goto L18;
+L17:
+	t14 = t2[t13];
+	t16 = 0;
+	t15 = 0;
+L19:
+	if(t15 < t3_length) goto L20;
+	goto L21;
+L20:
+	t17 = t3[t15];
+	if(t17 == t14) goto L22;
+	goto L24;
+L22:
+	t16 = 1;
+	goto L21;
+L24:
+	t15 = t15 + 1;
+	goto L19;
+L21:
+	if(t16 == 0) goto L23;
+	goto L17_next;
+L23:
+	t3[t3_length] = t14;
+	t3_length = t3_length + 1;
+L17_next:
+	t13 = t13 + 1;
+	goto L16;
+L18:
+	d_length = 0;
+	t18 = 0;
+L25:
+	if(t18 < t3_length) goto L26;
+	goto L27;
+L26:
+	t19 = t3[t18];
+	d[d_length] = t19;
+	d_length = d_length + 1;
+	t18 = t18 + 1;
+	goto L25;
+L27:
+	t20 = 0;
+L28:
+	if(t20 < c_length) goto L29;
+	goto L30;
+L29:
+	if(t20 == 0) goto L31;
+	goto L32;
+L32:
+	writec 32;
+L31:
+	t21 = c[t20];
+	write t21;
+	t20 = t20 + 1;
+	goto L28;
+L30:
+	writec 10;
+	t22 = 0;
+L33:
+	if(t22 < d_length) goto L34;
+	goto L35;
+L34:
+	if(t22 == 0) goto L36;
+	goto L37;
+L37:
+	writec 32;
+L36:
+	t23 = d[t22];
+	write t23;
+	t22 = t22 + 1;
+	goto L33;
+L35:
+	writec 10;

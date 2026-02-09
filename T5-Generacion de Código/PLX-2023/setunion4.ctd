@@ -1,0 +1,58 @@
+	c_length = 0;
+	t0_length = 0;
+	t0[t0_length] = 1;
+	t0_length = t0_length + 1;
+	t0[t0_length] = 2;
+	t0_length = t0_length + 1;
+	t0[t0_length] = 3;
+	t0_length = t0_length + 1;
+	c_length = 0;
+	t1 = 0;
+L0:
+	if(t1 < t0_length) goto L1;
+	goto L2;
+L1:
+	t2 = t0[t1];
+	c[c_length] = t2;
+	c_length = c_length + 1;
+	t1 = t1 + 1;
+	goto L0;
+L2:
+	t3 = 0;
+	t4 = 0;
+L3:
+	if(t4 < c_length) goto L4;
+	goto L5;
+L4:
+	t5 = c[t4];
+	if(t5 == 4) goto L6;
+	goto L8;
+L6:
+	t3 = 1;
+	goto L5;
+L8:
+	t4 = t4 + 1;
+	goto L3;
+L5:
+	if(t3 == 0) goto L7;
+	goto L9;
+L7:
+	c[c_length] = 4;
+	c_length = c_length + 1;
+L9:
+	t6 = 0;
+L10:
+	if(t6 < c_length) goto L11;
+	goto L12;
+L11:
+	if(t6 == 0) goto L13;
+	goto L14;
+L14:
+	writec 32;
+L13:
+	t7 = c[t6];
+	write t7;
+	t6 = t6 + 1;
+	goto L10;
+L12:
+	writec 10;

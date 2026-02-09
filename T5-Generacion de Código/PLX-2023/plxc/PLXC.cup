@@ -1,0 +1,151 @@
+import java_cup.runtime.*;
+import java.util.*;
+
+terminal MAS, MENOS, POR, IGUAL;
+terminal AP, CP, ALL, CLL, COMA, PYC;
+terminal MASIGUAL, MENOSIGUAL, PORIGUAL;
+terminal PRINT;
+terminal INT, FLOAT, CHAR, SET;
+terminal String IDENT, ENTERO, REAL, CARACTER;
+
+non terminal axioma;
+non terminal AST listaSentencias, sentencia;
+non terminal PRINT sentPrint;
+non terminal EXPRESION expresion, expSet;
+non terminal DECLARSET declarSet;
+non terminal TIPO tipo;
+non terminal CONJUNTO listaElems;
+
+precedence left COMA;
+precedence right IGUAL, MASIGUAL, MENOSIGUAL, PORIGUAL;
+precedence left MAS, MENOS;
+precedence left POR;
+
+axioma          ::= listaSentencias:ls                  {: ls.gc(); :}
+                  ;
+
+listaSentencias ::= sentencia:s                         {: RESULT = new AST(null, s); :}
+                  | listaSentencias:ls sentencia:s      {: RESULT = new AST(ls, s); :}
+                  ;
+
+sentencia       ::= expresion:e PYC                     {: RESULT = e; :}
+                  | declarSet:d PYC                     {: RESULT = d; :}
+                  | sentPrint:p                         {: RESULT = p; :}
+                  ;
+
+sentPrint       ::= PRINT AP expresion:e CP PYC         {: RESULT = new PRINT(e, null); :}
+                  ;
+
+declarSet       ::= SET tipo:t IDENT:id                     
+                    {: 
+                        if(TablaSimbolos.estaDefinida(id)){
+                            Generador.error(Generador.E_YADECLARADA);
+                        }
+                        TIPO tipoSet = new TIPO(TIPO.CONJUNTO, t.getTipo());
+                        TablaSimbolos.insertar(tipoSet, id);
+                        RESULT = new DECLARSET(null, tipoSet, id, null);
+                    :}
+                  | SET tipo:t IDENT:id IGUAL expSet:e   
+                    {:  
+                        if(TablaSimbolos.estaDefinida(id)){
+                            Generador.error(Generador.E_YADECLARADA);
+                        }
+                        TIPO tipoSet = new TIPO(TIPO.CONJUNTO, t.getTipo());
+                        TablaSimbolos.insertar(tipoSet, id);
+                        ASIG asig = new ASIG(id, e);
+                        RESULT = new DECLARSET(null, tipoSet, id, asig);
+                    :}
+                  | declarSet:d COMA IDENT:id IGUAL expSet:e
+                    {: 
+                        if(TablaSimbolos.estaDefinida(id)){
+                            Generador.error(Generador.E_YADECLARADA);
+                        }
+                        TablaSimbolos.insertar(d.getTipoDecl(), id);
+                        ASIG asig = new ASIG(id, e);
+                        RESULT = new DECLARSET(d, d.getTipoDecl(), id, asig);
+                    :}
+                  | declarSet:d COMA IDENT:id
+                    {: 
+                        if(TablaSimbolos.estaDefinida(id)){
+                            Generador.error(Generador.E_YADECLARADA);
+                        }
+                        TablaSimbolos.insertar(d.getTipoDecl(), id);
+                        RESULT = new DECLARSET(d, d.getTipoDecl(), id, null);
+                    :}
+                  ;
+
+tipo            ::= INT                                 {: RESULT = new TIPO(TIPO.ENTERO); :}
+                  | FLOAT                               {: RESULT = new TIPO(TIPO.REAL); :}
+                  | CHAR                                {: RESULT = new TIPO(TIPO.CARACTER); :}
+                  ;
+
+expresion       ::= IDENT:id IGUAL expSet:e          
+                    {:
+                        if(!TablaSimbolos.estaDefinida(id)){
+                            Generador.error(Generador.E_VND);
+                        }
+                        RESULT = new ASIG(id, e);
+                    :}
+                  | IDENT:id MASIGUAL expSet:e
+                    {:
+                        if(!TablaSimbolos.estaDefinida(id)){
+                            Generador.error(Generador.E_VND);
+                        }
+                        RESULT = new ASIGMAS(id, e);
+                    :}
+                  | IDENT:id MENOSIGUAL expSet:e
+                    {:
+                        if(!TablaSimbolos.estaDefinida(id)){
+                            Generador.error(Generador.E_VND);
+                        }
+                        RESULT = new ASIGMENOS(id, e);
+                    :}
+                  | IDENT:id PORIGUAL expSet:e
+                    {:
+                        if(!TablaSimbolos.estaDefinida(id)){
+                            Generador.error(Generador.E_VND);
+                        }
+                        RESULT = new ASIGPOR(id, e);
+                    :}
+                  | expSet:e
+                    {: RESULT = e; :}
+                  ;
+
+expSet          ::= expSet:e1 MAS expSet:e2       
+                    {: RESULT = new UNION(e1, e2); :}
+                  | expSet:e1 MENOS expSet:e2     
+                    {: RESULT = new RESTA(e1, e2); :}
+                  | expSet:e1 POR expSet:e2       
+                    {: RESULT = new INTERSECCION(e1, e2); :}
+                  | AP expSet:e CP               
+                    {: RESULT = e; :}
+                  | ENTERO:n                            
+                    {: RESULT = new CTE(n, null, new TIPO(TIPO.ENTERO)); :}
+                  | REAL:r                              
+                    {: RESULT = new CTE(r, null, new TIPO(TIPO.REAL)); :}
+                  | CARACTER:c                          
+                    {: RESULT = new CTE(c, null, new TIPO(TIPO.CARACTER)); :}
+                  | IDENT:id                            
+                    {: 
+                        TIPO tipo = TablaSimbolos.getTipo(id);
+                        if(tipo == null){
+                            Generador.error(Generador.E_VND);
+                        }
+                        CTE cte = new CTE(id, null, tipo);
+                        RESULT = cte;
+                    :}
+                  | ALL listaElems:le CLL               
+                    {: RESULT = le; :}
+                  ;
+
+listaElems      ::= listaElems:le COMA expSet:e      
+                    {: 
+                        le.anyadir(e);
+                        RESULT = le;
+                    :}      
+                  | expSet:e                         
+                    {:
+                        RESULT = new CONJUNTO();
+                        RESULT.anyadir(e);
+                    :}
+                  ;

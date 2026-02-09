@@ -1,0 +1,219 @@
+import java_cup.runtime.*;
+import java.util.*;
+
+action code {:
+    int contadorTemp = 0;
+    HashSet<String> variablesDeclaradas = new HashSet<>();
+    
+    String nuevaLista() {
+        return "_lista" + (contadorTemp++);
+    }
+:}
+
+terminal ALL, CLL, AP, CP, AC, CC;
+terminal COMA, PYC, ASIG;
+terminal MAS, MENOS, POR, DIV, MOD;
+terminal EQ, NE, LE, GE, LT, GT;
+terminal FOR, IN, PRINT, IF;
+terminal AND, OR, NOT;
+terminal String IDENT;
+terminal String NUMERO;
+terminal EOLN;
+
+non terminal programa;
+non terminal sentencia;
+non terminal String expresion;
+non terminal String lista;
+non terminal String listaSimple;
+non terminal String elementos;
+non terminal String comprension;
+non terminal String iteradores;
+non terminal String iterador;
+non terminal String condicion;
+non terminal String condicionLogica;
+
+precedence left OR;
+precedence left AND;
+precedence right NOT;
+precedence nonassoc EQ, NE, LT, GT, LE, GE;
+precedence left MAS, MENOS;
+precedence left POR, DIV, MOD;
+
+programa        ::= programa sentencia
+                  | sentencia
+                  ;
+
+sentencia       ::= IDENT:id ASIG lista:l EOLN
+                    {:
+                        if (variablesDeclaradas.contains(id)) {
+                            LPC.out.println("        " + id + " = " + l + ";");
+                        } else {
+                            LPC.out.println("        ArrayList<Integer> " + id + " = " + l + ";");
+                            variablesDeclaradas.add(id);
+                        }
+                    :}
+                  | PRINT AP lista:l CP EOLN
+                    {:
+                        LPC.out.println("        System.out.println(" + l + ");");
+                    :}
+                  | EOLN
+                  ;
+
+lista           ::= listaSimple:l
+                    {:
+                        RESULT = l;
+                    :}
+                  | AC comprension:c CC
+                    {:
+                        RESULT = c;
+                    :}
+                  | IDENT:id
+                    {:
+                        RESULT = id;
+                    :}
+                  ;
+
+listaSimple     ::= AC elementos:e CC
+                    {:
+                        String temp = nuevaLista();
+                        LPC.out.println("        ArrayList<Integer> " + temp + " = new ArrayList<>();");
+                        String[] elems = e.split(",");
+                        for (String elem : elems) {
+                            LPC.out.println("        " + temp + ".add(" + elem + ");");
+                        }
+                        RESULT = temp;
+                    :}
+                  | AC CC
+                    {:
+                        String temp = nuevaLista();
+                        LPC.out.println("        ArrayList<Integer> " + temp + " = new ArrayList<>();");
+                        RESULT = temp;
+                    :}
+                  ;
+
+elementos       ::= elementos:e COMA expresion:exp
+                    {:
+                        RESULT = e + "," + exp;
+                    :}
+                  | expresion:exp
+                    {:
+                        RESULT = exp;
+                    :}
+                  ;
+
+comprension     ::= expresion:exp iteradores:it
+                    {:
+                        String temp = nuevaLista();
+                        LPC.out.println("        ArrayList<Integer> " + temp + " = new ArrayList<>();");
+                        LPC.out.println(it);
+                        LPC.out.println("            " + temp + ".add(" + exp + ");");
+                        RESULT = temp;
+                    :}
+                  | expresion:exp iteradores:it IF condicionLogica:cond
+                    {:
+                        String temp = nuevaLista();
+                        LPC.out.println("        ArrayList<Integer> " + temp + " = new ArrayList<>();");
+                        LPC.out.println(it);
+                        LPC.out.println("            if (" + cond + ")");
+                        LPC.out.println("                " + temp + ".add(" + exp + ");");
+                        RESULT = temp;
+                    :}
+                  ;
+
+iteradores      ::= iteradores:it1 iterador:it2
+                    {:
+                        RESULT = it1 + "\n" + it2;
+                    :}
+                  | iterador:it
+                    {:
+                        RESULT = it;
+                    :}
+                  ;
+
+iterador        ::= FOR IDENT:id IN lista:l
+                    {:
+                        RESULT = "        for (Integer " + id + " : " + l + ")";
+                    :}
+                  ;
+
+condicionLogica ::= condicionLogica:c1 AND condicionLogica:c2
+                    {:
+                        RESULT = "(" + c1 + " && " + c2 + ")";
+                    :}
+                  | condicionLogica:c1 OR condicionLogica:c2
+                    {:
+                        RESULT = "(" + c1 + " || " + c2 + ")";
+                    :}
+                  | NOT condicionLogica:c
+                    {:
+                        RESULT = "!" + c;
+                    :}
+                  | AP condicionLogica:c CP
+                    {:
+                        RESULT = "(" + c + ")";
+                    :}
+                  | condicion:c
+                    {:
+                        RESULT = c;
+                    :}
+                  ;
+
+condicion       ::= expresion:e1 EQ expresion:e2
+                    {:
+                        RESULT = e1 + " == " + e2;
+                    :}
+                  | expresion:e1 NE expresion:e2
+                    {:
+                        RESULT = e1 + " != " + e2;
+                    :}
+                  | expresion:e1 LT expresion:e2
+                    {:
+                        RESULT = e1 + " < " + e2;
+                    :}
+                  | expresion:e1 GT expresion:e2
+                    {:
+                        RESULT = e1 + " > " + e2;
+                    :}
+                  | expresion:e1 LE expresion:e2
+                    {:
+                        RESULT = e1 + " <= " + e2;
+                    :}
+                  | expresion:e1 GE expresion:e2
+                    {:
+                        RESULT = e1 + " >= " + e2;
+                    :}
+                  ;
+
+expresion       ::= expresion:e1 MAS expresion:e2
+                    {:
+                        RESULT = "(" + e1 + " + " + e2 + ")";
+                    :}
+                  | expresion:e1 MENOS expresion:e2
+                    {:
+                        RESULT = "(" + e1 + " - " + e2 + ")";
+                    :}
+                  | expresion:e1 POR expresion:e2
+                    {:
+                        RESULT = "(" + e1 + " * " + e2 + ")";
+                    :}
+                  | expresion:e1 DIV expresion:e2
+                    {:
+                        RESULT = "(" + e1 + " / " + e2 + ")";
+                    :}
+                  | expresion:e1 MOD expresion:e2
+                    {:
+                        RESULT = "(" + e1 + " % " + e2 + ")";
+                    :}
+                  | AP expresion:e CP
+                    {:
+                        RESULT = "(" + e + ")";
+                    :}
+                  | NUMERO:n
+                    {:
+                        RESULT = n;
+                    :}
+                  | IDENT:id
+                    {:
+                        RESULT = id;
+                    :}
+                  ;
